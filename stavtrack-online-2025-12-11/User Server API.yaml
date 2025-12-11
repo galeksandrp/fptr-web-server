@@ -1,0 +1,647 @@
+openapi: "3.1.0"
+info:
+  title: "User Server API"
+  version: "2025.11.19"
+servers:
+  - url: "https://stavtrack.online/api"
+    description: "Прод"
+paths:
+  /password/update:
+    patch:
+      summary: "Обновить пароль"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/password"
+      operationId: "update"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordDto"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponseEntity"
+  /password/reset/{uId}:
+    post:
+      summary: "Сброс пароля"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/password"
+      operationId: "reset"
+      parameters:
+        - name: "uId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponseEntity"
+  /role:
+    get:
+      summary: "Получить роли"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/role"
+      operationId: "getAllRoles"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/Role"
+    post:
+      summary: "Добавить роль"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/role"
+      operationId: "createRole"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Role"
+  /role/{id}:
+    put:
+      summary: "Обновить роль"
+      operationId: "updateRole"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/role"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Role"
+    delete:
+      summary: "Удалить роль"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/role"
+      operationId: "remove"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "integer"
+                format: "int64"
+  /server/status:
+    get:
+      summary: "Получить статус сервера (healthcheck)"
+      tags:
+        - "/server"
+      operationId: "status"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+  /server/version:
+    get:
+      summary: "Получить версию сервера"
+      tags:
+        - "/server"
+      operationId: "version"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+  /users:
+    get:
+      summary: "Получить пользователей"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/users"
+      operationId: "getAll"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/UserDto"
+    post:
+      summary: "Добавить пользователя"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/users"
+      operationId: "add"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserDto"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserDto"
+  /users/me:
+    get:
+      summary: "Получить текущего пользователя"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/users"
+      operationId: "getCurrentUser"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MeUserDto"
+  /users/{id}:
+    get:
+      summary: "Получить пользователя по id"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/users"
+      operationId: "get"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "deviceIds"
+          in: "query"
+          required: false
+          schema:
+            type: "boolean"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserAndDevicesDto"
+    patch:
+      summary: "Обновить пользователя"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/users"
+      operationId: "patchUser"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserAndDevicesDto"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserDto"
+    delete:
+      summary: "Удалить пользователя"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/users"
+      operationId: "remove"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "array"
+                items:
+                  type: "integer"
+                  format: "int64"
+  /users/emails:
+    get:
+      summary: "Получить эл. почты пользователей"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/users"
+      operationId: "getEmails"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "array"
+                items:
+                  type: "string"
+  /users/{uId}:
+    put:
+      summary: "Обновить пользователя"
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - "/users"
+      operationId: "updateUser"
+      parameters:
+        - name: "uId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserAndDevicesDto"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserDto"
+components:
+  schemas:
+    UserDto:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        name:
+          type: "string"
+          nullable: true
+        email:
+          type: "string"
+          nullable: true
+        active:
+          type: "boolean"
+          nullable: true
+        phone:
+          type: "string"
+          nullable: true
+        role:
+          type: "string"
+          nullable: true
+        ownerId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        roleId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        companyId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+    ExtendUserDto:
+      type: "object"
+      properties:
+        timezone:
+          type: "string"
+          nullable: true
+        language:
+          type: "string"
+          nullable: true
+        id:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        name:
+          type: "string"
+          nullable: true
+        email:
+          type: "string"
+          nullable: true
+        active:
+          type: "boolean"
+          nullable: true
+        phone:
+          type: "string"
+          nullable: true
+        role:
+          type: "string"
+          nullable: true
+        ownerId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        roleId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        companyId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+    UserAndDevicesDto:
+      type: "object"
+      properties:
+        deviceIds:
+          type: "array"
+          nullable: true
+          items:
+            type: "integer"
+            format: "int64"
+        timezone:
+          type: "string"
+          nullable: true
+        language:
+          type: "string"
+          nullable: true
+        id:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        name:
+          type: "string"
+          nullable: true
+        email:
+          type: "string"
+          nullable: true
+        active:
+          type: "boolean"
+          nullable: true
+        phone:
+          type: "string"
+          nullable: true
+        role:
+          type: "string"
+          nullable: true
+        ownerId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        roleId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        companyId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+    CreateUserDto:
+      type: "object"
+      properties:
+        timezone:
+          type: "string"
+          nullable: true
+        language:
+          type: "string"
+          nullable: true
+        deviceIds:
+          type: "array"
+          nullable: true
+          items:
+            type: "integer"
+            format: "int64"
+        password:
+          type: "string"
+          nullable: true
+        id:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        name:
+          type: "string"
+          nullable: true
+        email:
+          type: "string"
+          nullable: true
+        active:
+          type: "boolean"
+          nullable: true
+        phone:
+          type: "string"
+          nullable: true
+        role:
+          type: "string"
+          nullable: true
+        ownerId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        roleId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        companyId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+
+    UserFrontDto:
+      type: "object"
+      properties:
+        userId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        tiles:
+          type: "string"
+          nullable: true
+        navBarPosition:
+          type: "string"
+          nullable: true
+        showDeviceSensors:
+          type: "boolean"
+          nullable: true
+        showDeviceAttributes:
+          type: "boolean"
+          nullable: true
+        oldView:
+          type: "boolean"
+          nullable: true
+
+    Role:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+          nullable: true
+        name:
+          type: "string"
+          nullable: true
+        device:
+          type: "integer"
+          format: "int32"
+          nullable: true
+        user:
+          type: "integer"
+          format: "int32"
+          nullable: true
+        track:
+          type: "integer"
+          format: "int32"
+          nullable: true
+        report:
+          type: "integer"
+          format: "int32"
+          nullable: true
+        geofence:
+          type: "integer"
+          format: "int32"
+          nullable: true
+        notification:
+          type: "integer"
+          format: "int32"
+          nullable: true
+        analytics:
+          type: "integer"
+          format: "int32"
+          nullable: true
+        position:
+          type: "integer"
+          format: "int32"
+          nullable: true
+        companies:
+          type: "integer"
+          format: "int32"
+          nullable: true
+    MeUserDto:
+      type: "object"
+      properties:
+        role:
+          type: "string"
+          nullable: true
+        tiles:
+          type: "string"
+          nullable: true
+        navBarPosition:
+          type: "string"
+          nullable: true
+        showDeviceSensors:
+          type: "boolean"
+          nullable: true
+        showDeviceAttributes:
+          type: "boolean"
+          nullable: true
+        oldView:
+          type: "boolean"
+          nullable: true
+        timezone:
+          type: "string"
+          nullable: true
+        language:
+          type: "string"
+          nullable: true
+        id:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        name:
+          type: "string"
+          nullable: true
+        email:
+          type: "string"
+          nullable: true
+        active:
+          type: "boolean"
+          nullable: true
+        phone:
+          type: "string"
+          nullable: true
+        ownerId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        roleId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        companyId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+    PasswordDto:
+      type: "object"
+      properties:
+        oldPassword:
+          type: "string"
+          nullable: true
+        newPassword:
+          type: "string"
+          nullable: true
+    HttpHeaders:
+      type: "object"
+      properties: { }
+    ResponseEntity:
+      type: "object"
+      properties:
+        headers:
+          $ref: "#/components/schemas/HttpHeaders"
+      required:
+        - "headers"
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

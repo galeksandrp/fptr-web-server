@@ -1,0 +1,2870 @@
+openapi: 3.0.0
+servers:
+  - description: online-check.business.ru
+    url: https://check.business.ru/open-api/v1/
+info:
+  version: '1.05'
+  title: API сервиса Бизнес.Ру Онлайн-Чеки
+  description: >
+
+    [https://online-check.business.ru](https://online-check.business.ru)
+
+      Применяется для ФФД 1.05. Описание [API для ФФД 1.2](https://app.swaggerhub.com/apis-docs/Business.Ru/check.business.ru/1.2)
+    <br>
+    
+    ### SDK для работы с API на **PHP**.
+
+      - [github api-lib-php](https://github.com/business-ru/open-api-sdk-php)
+      - [packagist](https://packagist.org/packages/business-ru/open-api-sdk-php) `composer require business-ru/open-api-sdk-php`
+    ### Коллекция запросов в Postman
+    
+    [BusinessRu-postman-open-api-v1.zip](https://online-check.business.ru/wp-content/uploads/2022/05/BusinessRu-postman-open-api-v1.zip)
+    
+    ### JSON Schema Validation
+    
+    [JSON-Schema-Validation-open-api-v1.zip](https://online-check.business.ru/wp-content/uploads/2022/05/JSON-Schema-Validation-open-api-v1.zip)
+
+    # Отправка запроса на сервер
+    
+    При отправке запроса к API приложение должно выполнить ряд действий.
+    
+    Для GET запросов подписывается текстовое представление итогового  JSON объекта,сформированного из параметров запроса.
+    Для POST запросов подписывается текстовое представление JSON объекта, передаваемого в качестве полезной нагрузки.
+
+    - параметры: `nonce` и `app_id`, где 
+    <br>
+    -- `nonce` - случайно генерируемая, уникальная для каждого запроса строка,
+    <br>
+    -- `app_id` - уникальный идентификатор, выданный при подключении интеграции на аккаунте.
+
+    - Полученный массив параметров сортируется в алфавитном порядке и
+    преобразуется в json строку - `params_string`.
+
+    - К запросу добавляется заголовок `sign`. Подпись запроса вычисляется по формуле: 
+
+    `sign = MD5( params_string + secret )`,
+
+    где параметром функции MD5 служит конкатенация компонентов:
+    <br>
+    -- `params_string` - url-кодированная строка параметров
+    <br>
+    -- `secret` - секретный ключ, полученный при подключении интеграции на аккаунте. 
+    
+    ## Авторизация
+    
+    Для отправки чеков через API используется уникальный идентификатор интеграции, он дает право доступа к системе посредством интеграционного API.
+
+     # Ограничения
+     В ответ на **GET** запросы API может возвращать данные постранично. Размер страницы по умолчанию - **250 записей**.  Размер может быть изменен в меньшую сторону путем указания параметра limit. Указав параметр page, приложение может получить любую необходимую страницу.
+     
+     # URL
+     Строка URL, как правило, состоит из четырёх элементов. БазовыйURL + Контроллер + Версия + Модель: [https://check.business.ru/open-api/v1/Command/](https://check.business.ru/open-api/v1/Command/)
+tags:
+  - name: token
+    description: Получение и восстановление токена
+  - name: Users
+    description: Работа с пользователем / аккаунтом
+  - name: Command
+    description: Передача команд в ФР
+  - name: Meta
+    description: Статистические данные
+paths:
+  /Token:
+    get:
+      tags:
+        - token
+      summary: Получить новый токен 
+      description: |
+        Вернёт новый токен ❗️ **Устаревший метод**: Этот метод был помечен как устаревший и будет удален в будущих версиях API.
+      operationId: getToken
+      deprecated: true
+      parameters:
+        - name: app_id
+          in: query
+          description: Уникальный id для интеграции
+          required: true
+          schema:
+            type: string
+        - name: nonce
+          in: query
+          description: Уникальная соль для каждого запроса
+          required: true
+          schema:
+            type: string
+        - name: sign
+          in: header
+          description: Уникальная подпись для каждого запроса
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Запрос выполнен успешно
+          headers:
+            sign:
+              description: Подпись запроса
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - token
+                  - expires
+                properties:
+                  expires:
+                    description: Время жизни токена
+                    type: integer
+                    format: int
+                    example: 86400
+                  token:
+                    description: Токен для последующих запросов к серверу
+                    type: string
+                    format: string36
+                    example: 4eb7649c6c9347800979d1830356f2a54c3deab2a4b4475d63afbe8fb56987c7
+        '401':
+          description: Запрос не авторизован
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - Result
+                  - Message
+                properties:
+                  Message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid app_id
+                  Result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+        '403':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - Result
+                  - Message
+                properties:
+                  Message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid sign
+                  Result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+  /Users:
+    get:
+      tags:
+        - Users
+      summary: Данные пользователя по ID интеграции
+      description: Вернёт данные пользователя
+      operationId: getUserById
+      parameters:
+        - name: app_id
+          in: query
+          description: Уникальный id для интеграции
+          required: true
+          schema:
+            type: string
+        - name: nonce
+          in: query
+          description: Уникальная соль для каждого запроса
+          required: true
+          schema:
+            type: string
+        - name: sign
+          in: header
+          description: Уникальная подпись для каждого запроса
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Запрос выполнен успешно
+          headers:
+            sign:
+              description: Подпись запроса
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - user_id
+                properties:
+                  user_id:
+                    description: ID пользователя
+                    type: integer
+                    format: int20
+                    example: 446235
+                  created_at:
+                    description: Дата создания аккаунта
+                    type: string
+                    format: date-time
+                    example: 2023-10-11T11:05:15+03:00
+                  email:
+                    description: Электронная почта
+                    type: string
+                    format: string64
+                    example: example@mail.ru
+                    default: null
+                  first_name:
+                    description: Имя пользователя
+                    type: string
+                    format: string32
+                    example: Иван
+                    default: null
+                  last_name:
+                    description: Фамилия пользователя
+                    type: string
+                    format: string32
+                    example: Иванов
+                    default: null
+                  middle_name:
+                    description: Отчество пользователя
+                    type: string
+                    format: string32
+                    example: Иванович
+                    default: null
+                  login_at:
+                    description: Дата последнего входа
+                    type: string
+                    format: date-time
+                    example: 2023-10-11T11:05:15+03:00
+                    default: null
+                  timezone:
+                    description: Номер телефона
+                    type: string
+                    format: timezone
+                    example: Europe/Moscow
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1004'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: app_id обязателен
+        '401':
+          description: Запрос не авторизован
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid app_id
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid sign
+  
+  /Account:
+    get:
+      tags:
+        - Users
+      summary: Данные аккаунта по ID интеграции
+      description: Вернёт данные аккаунта
+      operationId: getAccountById
+      parameters:
+        - name: app_id
+          in: query
+          description: Уникальный id для интеграции
+          required: true
+          schema:
+            type: string
+        - name: nonce
+          in: query
+          description: Уникальная соль для каждого запроса
+          required: true
+          schema:
+            type: string
+        - name: sign
+          in: header
+          description: Уникальная подпись для каждого запроса
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Запрос выполнен успешно
+          headers:
+            sign:
+              description: Подпись запроса
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                properties:
+                  id:
+                    description: ID аккаунта
+                    type: integer
+                    format: int32
+                    example: 446235
+                  auto_link_full_payment:
+                    description: Автоматически привязывать чек полного расчёта к чеку предоплаты
+                    type: boolean
+                    format: boolean
+                    example: true
+                    default: false
+                  auto_link_refund:
+                    description: Автоматически привязывать чек возврата к чеку предоплаты
+                    type: boolean
+                    format: boolean
+                    example: true
+                    default: true
+                  company_name:
+                    description: Наименование организации
+                    type: string
+                    format: string64
+                    example: ООО Эвотор
+                    default: null
+                  com_port_mode:
+                    description: Работа сканера в режиме COM-порта
+                    type: boolean
+                    format: boolean
+                    example: true
+                    default: false
+                  crm_partner_id:
+                    description: ID партнёра в CRM
+                    type: integer
+                    format: int64
+                    example: 446235
+                    default: null
+                  date_create:
+                    description: Дата создания аккаунта
+                    type: string
+                    format: date-time
+                    example: 2023-09-13T13:28:29+03:00
+                  date_update:
+                    description: Дата обновления данных
+                    type: string
+                    format: date-time
+                    example: 2023-09-13T13:28:29+03:00
+                  default_cashier_inn:
+                    description: ИНН кассира по умолчанию
+                    type: string
+                    format: string32
+                    maxLength: 12
+                    example: 959415740679
+                    default: null
+                  default_cashier_name:
+                    description: ФИО кассира по умолчанию
+                    type: string
+                    format: string32
+                    example: Кассир
+                    default: null
+                  default_item_type:
+                    description: Признак предмета расчета по умолчанию
+                    type: integer
+                    format: int16
+                    example: 1
+                    default: null
+                  default_measure:
+                    description: Мера количества по умолчанию
+                    type: integer
+                    format: int32
+                    example: 81
+                    default: null
+                  default_nds:
+                    description: НДС по умолчанию
+                    type: integer
+                    format: int16
+                    example: 1
+                    default: null
+                  default_payment_mode:
+                    description: Способо расчёта по умолчанию
+                    type: integer
+                    format: int16
+                    example: 1
+                    default: null
+                  default_sno:
+                    description: СНО по умолчанию
+                    type: integer
+                    format: int16
+                    example: 1
+                  email:
+                    description: Электронная почта организации
+                    type: string
+                    format: string64
+                    example: example@mail.ru
+                    default: null
+                  inn:
+                    description: ИНН организации
+                    type: string
+                    format: string12
+                    example: 1234567891
+                    default: null
+                  kpp:
+                    description: КПП организации
+                    type: string
+                    format: string9
+                    example: 987654321
+                    default: null
+                  legal_address:
+                    description: Юридический адрес компании
+                    type: string
+                    format: string32
+                    example: г. Уфа, ул. Пушкина, д.2
+                    default: null
+                  code:
+                    description: Название аккаунта
+                    type: string
+                    format: string32
+                    example: shop
+                  notification_about_not_available_kkt:
+                    description: Оповещать об отсутствии связи с ККТ
+                    type: boolean
+                    format: boolean
+                    example: true
+                    default: false
+                  postal_address:
+                    description: Фактический адрес
+                    type: string
+                    format: string32
+                    example: г. Уфа, ул. Пушкина, д.2
+                    default: null
+                  registration_source:
+                    description: ID источника регистрации
+                    type: integer
+                    format: int32
+                    example: 1
+                  shop_url:
+                    description: Место расчётов
+                    type: string
+                    format: string32
+                    example: г. Уфа, ул. Пушкина, д.2
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1004'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: app_id обязателен
+        '401':
+          description: Запрос не авторизован
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid app_id
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid sign
+  
+  /Command/{commandId}:
+    get:
+      tags:
+        - Command
+      summary: Получение данных о команде по ID пользователя и ID команды
+      description: Вернёт информацию о команде
+      operationId: getCommandById
+      parameters:
+        - name: app_id
+          in: query
+          description: Уникальный id для интеграции
+          required: true
+          schema:
+            type: string
+        - name: commandId
+          in: path
+          description: ID команды
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: nonce
+          in: query
+          description: Уникальная соль для каждого запроса
+          required: true
+          schema:
+            type: string
+        - name: sign
+          in: header
+          description: Уникальная подпись для каждого запроса
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Запрос выполнен успешно
+          headers:
+            sign:
+              description: Подпись запроса
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Command'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1004'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: app_id обязателен
+        '401':
+          description: Запрос не авторизован
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid app_id
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid sign
+  /Command:
+    get:
+      tags:
+        - Command
+      summary: Получение данных о команде в ФР по ID пользователя и ID команды
+      description: Вернёт информацию о команде ФР с учётом фильтров
+      operationId: getCommands
+      parameters:
+        - name: app_id
+          in: query
+          description: Уникальный id для интеграции
+          required: true
+          schema:
+            type: string
+        - name: filter_date_create_from
+          in: query
+          description: Фильтр команд по дате создания *ОТ*
+          required: false
+          schema:
+            type: string
+          example: 10-02-2022T00:00:00
+        - name: filter_date_create_to
+          in: query
+          description: Фильтр команд по дате создания *ДО*
+          required: false
+          schema:
+            type: string
+          example: 27-02-2022T23:59:59
+        - name: filter_date_update_from
+          in: query
+          description: Фильтр команд по дате изменения *ОТ*
+          required: false
+          schema:
+            type: string
+          example: 10-02-2022T00:00:00
+        - name: filter_date_update_to
+          in: query
+          description: Фильтр команд по дате изменения *ДО*
+          required: false
+          schema:
+            type: string
+          example: 27-02-2022T23:59:59
+        - name: filter_date_result_from
+          in: query
+          description: Фильтр команд по дате получения результата выполнения команды *ОТ*
+          required: false
+          schema:
+            type: string
+          example: 10-02-2022T00:00:00
+        - name: filter_date_result_to
+          in: query
+          description: Фильтр команд по дате получения результата выполнения команды *ДО*
+          required: false
+          schema:
+            type: string
+          example: 27-02-2022T23:59:59
+        - name: page
+          in: query
+          description: Номер страницы выборки результатов
+          required: false
+          schema:
+            type: string
+            format: int6
+        - name: c_num
+          in: query
+          description: Уникальный номер документа из системы
+          required: false
+          schema:
+            type: string
+            format: int128
+        - name: nonce
+          in: query
+          description: Уникальная соль для каждого запроса
+          required: true
+          schema:
+            type: string
+        - name: sign
+          in: header
+          description: Уникальная подпись для каждого запроса
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Запрос выполнен успешно
+          headers:
+            sign:
+              description: Подпись запроса
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    minItems: 0
+                    maxItems: 250
+                    items:
+                      $ref: '#/components/schemas/Checks'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1004'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: app_id обязателен
+        '401':
+          description: Запрос не авторизован
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid app_id
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid sign
+    post:
+      tags:
+        - Command
+      summary: Передача команд в ФР по ID пользователя
+      description: Добавит команду в очередь на выполнение ФР
+      operationId: setCommand
+      requestBody:
+        required: true
+        content:
+          application/json; charset=utf-8:
+            schema:
+              type: object
+              required:
+                - app_id
+                - command
+                - nonce
+                - type
+              properties:
+                app_id:
+                  description: Уникальный id для интеграции
+                  type: string
+                  example: a640b6f5-71cc-4937-8a77-7bc32050793e
+                cashbox_id:
+                  description: id кассы
+                  type: integer
+                  example: 110
+                command:
+                  oneOf:
+                    - $ref: '#/components/schemas/JSON_check'
+                    - $ref: '#/components/schemas/JSON_shift'
+                    - $ref: '#/components/schemas/JSON_cash'
+                    - $ref: '#/components/schemas/JSON_report'
+                    - $ref: '#/components/schemas/JSON_correction'
+                nonce:
+                  description: Уникальная соль для каждого запроса
+                  type: string
+                  example: salt_1645017707212
+                type:
+                  description: >
+                    Тип команды. Возможные значения:
+                      * `printCheck` - Чек прихода
+                      * `printPurchaseReturn` - Чек возврата прихода
+                      * `printCheckBuy` - Чек расхода
+                      * `printCheckBuyReturn` - Чек возврата расхода
+                      * `printCashIn` - Внесение денег
+                      * `printCashOut` - Выдача денег
+                      * `printReport` - Z-отчёт / X-отчёт
+                      * `printCheckCorrection` - Чек коррекции
+                      * `closeShift` - Закрытие смены
+                      * `openShift` - Открытие смены
+                  type: string
+                  enum:
+                    - printCheck
+                    - printPurchaseReturn
+                    - printCheckBuy
+                    - printCheckBuyReturn
+                    - printCashIn
+                    - printCashOut
+                    - printReport
+                    - printCheckCorrection
+                    - closeShift
+                    - openShift
+                  example: printCheck
+      parameters:
+        - name: sign
+          in: header
+          description: Уникальная подпись для каждого запроса
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: >-
+            В результате сервер вернёт id команды. Далее можно получать
+            информацию о выполнении этой команды ФР
+          headers:
+            sign:
+              description: Подпись запроса
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - command_id
+                properties:
+                  command_id:
+                    description: ID присвоенный данной команде
+                    type: integer
+                    format: int64
+                    example: '5415645125'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - errors
+                  - message
+                  - result
+                properties:
+                  errors:
+                    type: object
+                    required: 
+                      - type
+                    properties:
+                      type:
+                        type: array
+                        items:
+                          description: Результат выполнения запроса
+                          type: string
+                          format: string36
+                          example: "Выбранное значение для type некорректно."
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: Неверно заполнены поля
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1022'
+        '401':
+          description: Запрос не авторизован
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid app_id
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid sign
+        '422':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                  - errors
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1022'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: Неверно заполнены поля
+                  errors:
+                    type: object
+                    required:
+                      - command
+                    properties:
+                      command.author:
+                        description: Результат выполнения запроса
+                        type: string
+                        format: string36
+                        example: "Поле обязательно для заполнения"
+                      command.goods.0.count:
+                        description: Результат выполнения запроса
+                        type: string
+                        format: string36
+                        example: "Поле обязательно для заполнения"
+                      command.goods.0.price:
+                        description: Результат выполнения запроса
+                        type: string
+                        format: string36
+                        example: "Поле обязательно для заполнения"
+  /StateSystem:
+    get:
+      tags:
+        - Meta
+      summary: Получение данных о состоянии системы
+      description: Вернёт информацию о текущем состоянии системы
+      operationId: getStateSystem
+      parameters:
+        - name: app_id
+          in: query
+          description: Уникальный id для интеграции
+          required: true
+          schema:
+            type: string
+        - name: nonce
+          in: query
+          description: Уникальная соль для каждого запроса
+          required: true
+          schema:
+            type: string
+        - name: sign
+          in: header
+          description: Уникальная подпись для каждого запроса
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Запрос выполнен успешно
+          headers:
+            sign:
+              description: Подпись запроса
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - date_last_connect_app
+                  - date_last_connect_ofd
+                  - printer_status
+                  - printer_name
+                  - cashbox_id
+                properties:
+                  date_last_connect_app:
+                    description: Дата последней передачи данных в приложение windows
+                    type: string
+                    format: date-time
+                    example: 2023-10-31T07:55:45+03:00
+                    default: null
+                  date_last_connect_ofd:
+                    description: Дата последней передачи данных в ОФД
+                    type: string
+                    format: date-time
+                    example: 2023-10-31T07:55:45+03:00
+                    default: null
+                  printer_status:
+                    description: >-
+                      Статус ФР (код состояния). 0 - ФР не найден, 1 - ФР готов к работе, 2 - нет чековой ленты или смена превысила 24 часа  ...
+                    type: integer
+                    format: int16
+                    example: '1'
+                    default: '0'
+                  app_name:
+                    description: Имя приложения
+                    type: string
+                    format: string
+                    example: Онлайн-касса
+                    default: null
+                  app_version:
+                    description: Версия приложения
+                    type: string
+                    format: string
+                    example: 1.0.0
+                    default: null
+                  os_name:
+                    description: Название ОС
+                    type: string
+                    format: string
+                    example: Windows 10
+                    default: null
+                  pc_name:
+                    description: Имя ПК
+                    type: string
+                    format: string
+                    example: Work
+                    default: null
+                  printer_name:
+                    description: Название ФР
+                    type: string
+                    format: string
+                    example: Атол 30Ф
+                    default: null
+                  cashbox_id:
+                    description: ID кассы
+                    type: string
+                    format: string
+                    example: 110
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1004'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: app_id обязателен
+        '401':
+          description: Запрос не авторизован
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid app_id
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid sign
+        '404':
+          description: Нет подключенных касс
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1022'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: Not Found
+  /Shift:
+    get:
+      tags:
+        - Meta
+      summary: Получение данных о сменах
+      description: Вернёт информацию о сменах с учётом фильтров
+      operationId: getShift
+      parameters:
+        - name: app_id
+          in: query
+          description: Уникальный id для интеграции
+          required: true
+          schema:
+            type: string
+        - name: filter_date_create_from
+          in: query
+          description: Фильтр по дате создания *ОТ*
+          required: false
+          schema:
+            type: string
+          example: 10-02-2022T00:00:00
+        - name: filter_date_create_to
+          in: query
+          description: Фильтр по дате создания *ДО*
+          required: false
+          schema:
+            type: string
+          example: 27-02-2022T23:59:59
+        - name: filter_date_update_from
+          in: query
+          description: Фильтр по дате изменения *ОТ*
+          required: false
+          schema:
+            type: string
+          example: 10-02-2022T00:00:00
+        - name: filter_date_update_to
+          in: query
+          description: Фильтр по дате изменения *ДО*
+          required: false
+          schema:
+            type: string
+          example: 27-02-2022T23:59:59
+        - name: filter_date_start_from
+          in: query
+          description: Фильтр по дате открытия смены *ОТ*
+          required: false
+          schema:
+            type: string
+          example: 10-02-2022T00:00:00
+        - name: filter_date_start_to
+          in: query
+          description: Фильтр по дате открытия смены *ДО*
+          required: false
+          schema:
+            type: string
+          example: 27-02-2022T23:59:59
+        - name: filter_date_stop_from
+          in: query
+          description: Фильтр по дате закрытия смены *ОТ*
+          required: false
+          schema:
+            type: string
+          example: 10-02-2022T00:00:00
+        - name: filter_date_stop_to
+          in: query
+          description: Фильтр по дате закрытия смены *ДО*
+          required: false
+          schema:
+            type: string
+          example: 27-02-2022T23:59:59
+        - name: page
+          in: query
+          description: Номер страницы выборки результатов
+          required: false
+          schema:
+            type: string
+            format: int6
+        - name: nonce
+          in: query
+          description: Уникальная соль для каждого запроса
+          required: true
+          schema:
+            type: string
+        - name: sign
+          in: header
+          description: Уникальная подпись для каждого запроса
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Запрос выполнен успешно
+          headers:
+            sign:
+              description: Подпись запроса
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    minItems: 0
+                    maxItems: 250
+                    items:
+                      $ref: '#/components/schemas/Shifts'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1004'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: app_id обязателен
+        '401':
+          description: Запрос не авторизован
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid app_id
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid sign
+  /Check:
+    get:
+      tags:
+        - Meta
+      summary: Получение данных о чеках
+      description: Вернёт информацию о чеках с учётом фильтров
+      operationId: getCheck
+      parameters:
+        - name: app_id
+          in: query
+          description: Уникальный id для интеграции
+          required: true
+          schema:
+            type: string
+        - name: filter_date_from
+          in: query
+          description: Фильтр по дате создания *ОТ*
+          required: false
+          schema:
+            type: string
+          example: 10-02-2022T00:00:00
+        - name: filter_date_to
+          in: query
+          description: Фильтр по дате создания *ДО*
+          required: false
+          schema:
+            type: string
+          example: 27-02-2022T23:59:59
+        - name: shift_ref
+          in: query
+          description: Фильтр по номеру смены
+          required: false
+          schema:
+            type: string
+            format: int64
+        - name: page
+          in: query
+          description: Номер страницы выборки результатов
+          required: false
+          schema:
+            type: string
+            format: int6
+        - name: nonce
+          in: query
+          description: Уникальная соль для каждого запроса
+          required: true
+          schema:
+            type: string
+        - name: sign
+          in: header
+          description: Уникальная подпись для каждого запроса
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Запрос выполнен успешно
+          headers:
+            sign:
+              description: Подпись запроса
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    minItems: 0
+                    maxItems: 250
+                    items:
+                      $ref: '#/components/schemas/Checks'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1004'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: app_id обязателен
+        '401':
+          description: Запрос не авторизован
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid app_id
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                  - message
+                properties:
+                  result:
+                    description: Результат выполнения запроса
+                    type: string
+                    format: string36
+                    example: '1001'
+                  message:
+                    description: Сообщение об ошибке
+                    type: string
+                    format: string36
+                    example: invalid sign
+components:
+  schemas:
+    Command:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          description: ID команды
+          type: integer
+          format: int64
+          example: '446248135'
+        shift_ref:
+          description: ID смены
+          type: integer
+          format: int32
+          example: '32408'
+        user_ref:
+          description: ID пользователя
+          type: integer
+          format: int32
+          example: '589'
+        c_num:
+          description: Уникальный номер документа из системы
+          type: string
+          maxLength: 128
+          example: 1603108283590
+        author:
+          description: ФИО кассира
+          type: string
+          maxLength: 64
+          example: Кассир
+        date_create:
+          description: Дата создания команды
+          type: string
+          format: date-time
+          example: 2023-10-20T08:22:11+03:00
+        date_update:
+          description: Дата обновления команды
+          type: string
+          format: date-time
+          example: 2023-10-20T08:22:11+03:00
+        check_type_id:
+          description: |
+            Тип команды. Возможные значения:
+            * `1` - Приход
+            * `2` - Возврат
+            * `3` - Внесение
+            * `4` - Изъятие
+            * `7` - Чек коррекции 
+            * `8` - Закрытие смены
+            * `9` - Открытие смены
+            * `10` - Z- отчет
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 7
+            - 8
+            - 9
+            - 10
+        fn_number:
+          description: Номер ФН
+          type: string
+          format: string
+          example: '9999012904037041'
+          default: null
+        ecr_registration_number:
+          description: Регистрационный номер ККТ
+          type: string
+          format: string
+          example: '0000000000023011'
+          default: null
+        fiscal_document_number:
+          description: Фискальный номер документа
+          type: string
+          format: string
+          example: '1887'
+          default: ""
+        fiscal_receipt_number:
+          description: Порядковый номер чека в смене
+          type: integer
+          format: int32
+          example: '1887'
+          default: null
+        fiscal_document_attribute:
+          description: Фискальный признак документа
+          type: integer
+          format: int64
+          example: 933492249
+        result_shift_number:
+          description: Номер смены, в которой прошел чек.
+          type: integer
+          format: int32
+          example: 11
+          default: null
+        external_id:
+          description: Внешний идентификатор команды.
+          type: string
+          format: string
+          example: '1603108283590'
+        receipt_datetime:
+          description: Дата и время документа из ФН
+          type: string
+          format: date-time
+          example: '2023-10-05T08:00:21+03:00'
+          default: null
+        result_msg:
+          description: Сообщение о результате
+          type: string
+          format: string
+          example: ok
+          default: null
+        payment_mode_check:
+          description: >
+            Признак способа расчёта. Возможные значения:
+            * `full_prepayment` – предоплата 100%. Полная предварительная оплата
+            до момента передачи предмета расчета.
+            * `prepayment` – предоплата. Частичная предварительная оплата до
+            момента передачи предмета расчета.
+            * `advance` – аванс.
+            * `full_payment` – полный расчет. Полная оплата, в том числе с
+            учетом аванса (предварительной оплаты) в момент передачи предмета
+            расчета
+            * `partial_payment` – частичный расчет и кредит. Частичная оплата
+            предмета расчета в момент его передачи с последующей оплатой в
+            кредит
+            * `credit` – передача в кредит. Передача предмета расчета без его
+            оплаты в момент его передачи с последующей оплатой в кредит
+            * `credit_payment` – оплата кредита. Оплата предмета расчета после
+            его передачи с оплатой в кредит (оплата кредита)
+          type: string
+          enum:
+            - full_prepayment
+            - prepayment
+            - advance
+            - full_payment
+            - partial_payment
+            - credit
+            - credit_payment
+          example: full_prepayment
+        client_name:
+          description: Наименование покупателя
+          type: string
+          format: string
+          maxLength: 256
+          example: Иванов Иван Иванович
+        client_inn:
+          description: ИНН покупателя
+          type: string
+          format: string
+          example: '322267314531'
+        additional_up_name:
+          description: Наименование доп. реквизита пользователя
+          type: string
+          format: string
+          example: 'mdlp3108805'
+        additional_up_value:
+          description: Значение доп. реквизита пользователя
+          type: string
+          format: string
+          example: 'ps45102&dnАБV492&&781&dd181110&sid71752852194630&'
+        cashbox_integration_ref:
+          description: ID кассы
+          type: integer
+          format: int32
+          example: 11
+        remote_service_integrations_ref:
+          description: ID интеграции
+          type: integer
+          format: int32
+          example: 2161
+        status:
+          description: >-
+            Статус команды (коды) - 0 - команда принята онлайн сервисом - 1 -
+            команда передана в приложение - 2 - команда передана в ФР - 3 -
+            команда выполнена
+          type: integer
+          format: int32
+          example: '3'
+          default: '0'
+        result:
+          description: >-
+            Результат выполнения команды (коды) - 0 - команда в очереди - 1 -
+            команда выпоолнена успешно - 2 - команда выполнена с ошибками
+          type: integer
+          format: int32
+          example: '1'
+          default: '0'
+        total:
+          description: >-
+            Итоговая сумма документа в рублях с заданным в CMS округлением: -
+            целая часть не более 8 знаков; - дробная часть не более 2 знаков.
+            При регистрации в ККТ происходит расчёт фактической суммы:
+            суммирование значений sum позиций. Допустимо значение total в
+            диапазоне от целой части фактической суммы до точного значения
+            фактической суммы
+          type: integer
+          format: integer
+          example: '1000'
+          default: '0'
+        command_type_id:
+          description: |
+            Тип команды. Возможные значения:
+            * `1` - Приход
+            * `2` - Возврат
+            * `3` - Внесение
+            * `4` - Изъятие
+            * `7` - Чек коррекции 
+            * `8` - Закрытие смены
+            * `9` - Открытие смены
+            * `10` - Z- отчет
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 7
+            - 8
+            - 9
+            - 10
+        date_result:
+          description: Дата получения результата выполнения команды
+          type: string
+          format: date-time
+          example: '2020-10-30T13:42:48+00:00'
+        callback_url:
+          description: Адрес отправки колбека команды
+          type: string
+          maxLength: 256
+          example: https://385aebd79436e9f44f1e135ebd64b39c.m.pipedream.net
+          default: ""
+        full_payment_command:
+          description: Есть ли на эту комманду чек полного расчета.
+          type: integer
+          format: int32
+          example: '10634096'
+          default: null
+        refund_command:
+          description: ID команды возврата чека.
+          type: integer
+          format: int32
+          example: '10634099'
+          default: null
+        type:
+          description: Тип команды.
+          type: string
+          format: string
+          enum:
+            - printCheck
+            - printPurchaseReturn
+            - printCheckBuy
+            - printCheckBuyReturn
+            - printCashIn
+            - printCashOut
+            - printReport
+            - printCheckCorrection
+            - closeShift
+            - openShift
+          default: printCheck
+        receipt_url:
+          description: Ссылка на электронный чек
+          type: string
+          format: string
+          example: >-
+            https://electronic-receipt.class365.ru/?fd=8576&fpd=2684747465&kkt=0000000000014891
+          default: null
+        command:
+          oneOf:
+            - $ref: '#/components/schemas/JSON_check'
+            - $ref: '#/components/schemas/JSON_shift'
+            - $ref: '#/components/schemas/JSON_cash'
+            - $ref: '#/components/schemas/JSON_report'
+            - $ref: '#/components/schemas/JSON_correction'
+        acquiring:
+          description: Статус операции торгового эквайринга
+          type: object
+          required:
+            - status
+            - operation_message
+          properties:
+            status:
+              description: |
+                Статус операции. Возможные значения:
+                * `create` - Операция создана
+                * `processed` - Операция в обработке
+                * `cancel` - Операция отклонена
+                * `success` - Операция успешна
+              type: string
+              enum:
+                - create
+                - processed
+                - cancel
+                - success
+              example: success
+            operation_message:
+              description: Описание операции
+              type: string
+              maxLength: 256
+              example: Успешно
+    JSON_check:
+      type: object
+      required:
+        - goods
+        - author
+        - payed_cash
+        - payed_cashless
+        - payed_credit
+        - payed_prepay
+        - payed_consideration
+      properties:
+        c_num:
+          description: Уникальный номер документа из системы
+          type: string
+          maxLength: 128
+          example: 1603108283590
+        print_check:
+          description: |
+              Печатать бумажный чек
+              * `true` - Печатать
+              * `false` - Не печатать
+          type: boolean
+          example: true
+        goods:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            required:
+              - price
+              - count
+              - sum
+              - nds_not_apply
+            properties:
+              name:
+                description: >-
+                  Наименование товара, работы, услуги, платежа, выплаты, иного
+                  предмета расчета. (Тег 1030)
+                type: string
+                maxLength: 256
+                example: Услуги доставки
+              price:
+                description: >-
+                  Цена за единицу товара, работы, услуги, платежа, выплаты,
+                  иного предмета расчета с учетом скидок и наценок (Тег 1079)
+                type: number
+                multipleOf: 0.01
+                format: double
+                maximum: 999999999.99
+                example: 10
+              count:
+                description: >-
+                  Количество/вес. В случае, если предметом расчета является
+                  товар, подлежащий обязательной маркировке средством
+                  идентификации (передан nomenclature_code), параметр должен принимать
+                  значение, равное `1`. (Тег 1023)
+                type: number
+                multipleOf: 0.01
+                format: double
+                maximum: 99999.99
+                example: 1
+              sum:
+                description: >-
+                  Сумма в рублях. Значение реквизита `стоимость предмета расчета
+                  с учетом скидок и наценок` должно быть равно произведению
+                  значения реквизита `цена за единицу предмета расчета с учетом
+                  скидок и наценок`, умноженному на значение реквизита
+                  `количество предмета расчета`. (Тег 1043)
+                type: number
+                multipleOf: 0.01
+                format: double
+                maximum: 999999999.99
+                example: 10
+              nds_value:
+                description: |
+                  Налоговая ставка НДС. (Тег 1199)
+                  Возможные значения:
+                    * `0` – НДС по ставке 0%;
+                    * `10` – НДС чека по ставке 10%;
+                    * `110` – НДС чека по расчетной ставке 10/110;
+                    * `20` – НДС чека по ставке 20%;
+                    * `120` – НДС чека по расчетной ставке 20/120.
+                type: integer
+                enum:
+                  - 0
+                  - 10
+                  - 20
+                  - 110
+                  - 120
+              nds_not_apply:
+                description: |
+                  для значения Без НДС (nds_not_apply: true),
+                  для оплат с НДС (nds_not_apply: false),
+                type: boolean
+                enum:
+                  - true
+                  - false
+              nomenclature_code:
+                description: |
+                  Код товара в шестнадцатеричном представлении с пробелами
+                  Максимальная длина – 32 байта.
+                  Пример: 00 00 00 01 00 21 FA 41 00 23 05 41 00 00 00
+                  00 00 00 00 00 00 00 00 00 00 00 00 00 12 00 AB 00
+                type: string
+                example: 44 4D 59 D3 9E 7F 19 72 41 42 43 31 32 33 34 35 36 37 38 39 30
+              item_type:
+                description: |
+                  Признак предмета расчёта (Тег 1212) (1-18)
+                    * `1` - ТОВАР. О реализуемом товаре, за исключением подакцизного товара (наименование и иные сведения, описывающие товар).
+                    * `2` - ПОДАКЦИЗНЫЙ ТОВАР. О реализуемом подакцизном товаре (наименование и иные сведения, описывающие товар). 
+                    * `3` - РАБОТА. О выполняемой работе (наименование и иные сведения, описывающие работу). 
+                    * `4` - УСЛУГА. Об оказываемой услуге (наименование и иные сведения, описывающие услугу).
+                    * `5` - СТАВКА АЗАРТНОЙ ИГРЫ или СТАВКА ИГРЫ. О приеме ставок при осуществлении деятельности по проведению азартных игр.
+                    * `6` - ВЫИГРЫШ АЗАРТНОЙ ИГРЫ. О выплате денежных средств в виде выигрыша при осуществлении деятельности по проведению азартных игр
+                    * `7` - ЛОТЕРЕЙНЫЙ БИЛЕТ или СТАВКА ЛОТЕРЕИ. О приеме денежных средств при реализации лотерейных билетов, электронных лотерейных билетов, приеме лотерейных ставок при осуществлении деятельности по проведению лотерей
+                    * `8` - ВЫИГРЫШ ЛОТЕРЕИ. О выплате денежных средств в виде выигрыша при осуществлении деятельности по проведению лотерей
+                    * `9` - ПРЕДОСТАВЛЕНИЕ РИД. О предоставлении прав на использование результатов интеллектуальной деятельности или средств индивидуализации.
+                    * `10` - ПЛАТЕЖ. Об авансе, задатке, предоплате, кредите, взносе в счет оплаты, пени, штрафе, вознаграждении, бонусе и ином аналогичном предмете расчета 
+                    * `11` - АГЕНТСКОЕ ВОЗНАГРАЖДЕНИЕ. О вознаграждении пользователя, являющегося платежным агентом (субагентом), банковским платежным агентом (субагентом), комиссионером, поверенным или иным агентом.
+                    * `12` - СОСТАВНОЙ ПРЕДМЕТ РАСЧЕТА. О предмете расчета, состоящем из предметов, каждому из которых может быть присвоено значение от 1 до 11. 
+                    * `13` - ИНОЙ ПРЕДМЕТ РАСЧЕТА. О предмете расчета, не относящемуся к предметам расчета, которым может быть присвоено значение от 1 до 12.
+                    * `14` - ИМУЩЕСТВЕННОЕ ПРАВО. О передаче имущественных прав. 
+                    * `15` - ВНЕРЕАЛИЗАЦИОННЫЙ ДОХОД. О внереализационном доходе.
+                    * `16` - СТРАХОВЫЕ ВЗНОСЫ. О суммах расходов, уменьшающих сумму налога (авансовых платежей) в соответствии с пунктом 3.1 статьи 346.21 Налогового кодекса Российской Федерации.
+                    * `17` - ТОРГОВЫЙ СБОР. О суммах уплаченного торгового сбора.
+                    * `18` - КУРОРТНЫЙ СБОР. О курортном сборе.
+                type: integer
+                enum:
+                  - 1
+                  - 2
+                  - 3
+                  - 4
+                  - 5
+                  - 6
+                  - 7
+                  - 8
+                  - 9
+                  - 10
+                  - 11
+                  - 12
+                  - 13
+                  - 14
+                  - 15
+                  - 16
+                  - 17
+                  - 18
+              user_data:
+                description: Дополнительный реквизит предмета расчета. (Тег 1191)
+                type: string
+                format: double
+                maxLength: 64
+                example: >-
+                  nngizxeipfzvsbuubtzghhosknuugijwxivttxapaoqlurdklmmkxtysvnsiawjk
+              agent_info:
+                description: Атрибуты агента.
+                type: object
+                required:
+                  - type
+                properties:
+                  type:
+                    description: >
+                      Признак агента по предмету расчёта. (Тег 1222)
+                      Возможные значенния:
+                        * `1` – банковский платежный агент. Оказание услуг
+                        покупателю (клиенту) пользователем, являющимся банковским
+                        платежным агентом.
+                        * `2` – банковский платежный субагент. Оказание
+                        услуг покупателю (клиенту) пользователем, являющимся
+                        банковским платежным субагентом.
+                        * `4` – платежный агент. Оказание услуг покупателю
+                        (клиенту) пользователем, являющимся платежным агентом.
+                        * `8` – платежный субагент. Оказание услуг покупателю
+                        (клиенту) пользователем, являющимся платежным субагентом.
+                        * `16` – поверенный. Осуществление расчета с покупателем
+                        (клиентом) пользователем, являющимся поверенным.
+                        * `32` – комиссионер. Осуществление расчета с
+                        покупателем (клиентом) пользователем, являющимся
+                        комиссионером.
+                        * `64` – другой тип агента. Осуществление расчета с
+                        покупателем (клиентом) пользователем, являющимся агентом и не
+                        являющимся банковским платежным агентом (субагентом), платежным
+                        агентом (субагентом), поверенным, комиссионером.
+                    type: integer
+                    enum:
+                      - 1
+                      - 2
+                      - 4
+                      - 8
+                      - 16
+                      - 32
+                      - 64
+                  transfer_operator_phone:
+                    type: string
+                    description: >-
+                      Номер телефона оператора по переводу денежных средств
+                      (Тег 1075)
+                    maxLength: 20
+                    example: +71111111111
+                  transfer_operator_name:
+                    description: Наименование оператора перевода. (Тег 1026)
+                    type: string
+                    maxLength: 256
+                    example: Наименование оператора перевода.
+                  transfer_operator_address:
+                    description: Адрес оператора перевода. (Тег 1005)
+                    type: string
+                    maxLength: 256
+                    example: Место нахождения оператора по переводу денежных средств
+                  transfer_operator_inn:
+                    description: ИНН оператора перевода (Тег 1016)
+                    type: string
+                    minLength: 10
+                    maxLength: 12
+                    example: 9411304925
+                  payment_operator_operation:
+                    description: >-
+                      Наименование операции банковского платежного агента,
+                      банковского платежного субагента. (Тег 1044)
+                    type: string
+                    maxLength: 64
+                    example: Перевод д/с
+                  payment_operator_phone:
+                    type: string
+                    description: >-
+                      Номер телефона платежного агента, платежного
+                      субагента, банковского платежного агента, банковского
+                      платежного субагента (Тег 1073)
+                    maxLength: 20
+                    example: +71111111111
+                  receive_operator_phone:
+                    type: string
+                    description: >-
+                      Номер контактного телефона оператора по приему платежей
+                      (Тег 1074)
+                    maxLength: 20
+                    example: +71111111111
+                  supplier_phone:
+                    type: string
+                    description: Телефон поставщика. (Тег 1171)
+                    maxLength: 20
+                    example: +71111111111
+                  supplier_name:
+                    description: Наименование поставщика. (Тег 1225)
+                    type: string
+                    maxLength: 256
+                    example: Наименование поставщика.
+                  supplier_inn:
+                    description: ИНН поставщика (Тег 1226)
+                    type: string
+                    minLength: 10
+                    maxLength: 12
+                    example: 6560535850
+              payment_mode:
+                description: >
+                  Признак способа расчёта. (Тег 1214)
+                  Возможные значения:
+                    * `1` - Предоплата 100%.
+                    Полная предварительная оплата до момента передачи предмета
+                    расчета. 
+                    * `2` - Предоплата. Частичная предварительная оплата до
+                    момента передачи предмета расчета.
+                    * `3` - Аванс.
+                    * `4` - Полный расчет. Полная оплата, в том числе с учетом
+                    аванса в момент передачи предмета расчета.
+                    * `5` - Частичный расчет и кредит. Частичная оплата предмета
+                    расчета в момент его передачи с последующей оплатой в кредит.
+                    * `6` - Передача в кредит. Передача предмета расчета без его
+                    оплаты в момент его передачи с последующей оплатой в кредит.
+                    * `7` - Оплата кредита. Оплата предмета расчета после его
+                    передачи с оплатой в кредит (оплата кредита).
+                type: integer
+                enum:
+                  - 1
+                  - 2
+                  - 3
+                  - 4
+                  - 5
+                  - 6
+                  - 7  
+        author:
+          description: ФИО кассира (Тег 1021)
+          type: string
+          maxLength: 64
+          example: Кассир
+        company:
+          description: Реквизиты компании
+          type: object
+          properties:
+            inn:
+              description: ИНН компании
+              type: string
+              minLength: 10
+              maxLength: 12
+              example: 253505979172
+            payment_address:
+              description: Адрес сайта компании
+              type: string
+              maxLength: 256
+              example: shop-url.ru
+        tag1055:
+          description: |
+            Система налогообложения
+              * `1` - общая СН
+              * `2` – упрощенная СН (доходы);
+              * `4` – упрощенная СН (доходы минус расходы);
+              * `8` – единый налог на вмененный доход;
+              * `16` – единый сельскохозяйственный налог;
+              * `32` – патентная СН.
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 4
+            - 8
+            - 16
+            - 32
+          example: 1
+        client_name:
+          description: Наименование покупателя (Тег 1227)
+          type: string
+          maxLength: 256
+          example: Иванов Иван Иванович
+        client_inn:
+          description: ИНН покупателя (Тег 1228)
+          type: string
+          minLength: 10
+          maxLength: 12
+          example: 322267314531
+        smsEmail54FZ:
+          description: Электронный адрес покупателя или телефон покупателя (Тег 1008)
+          type: string
+          maxLength: 64
+          example: test@test.ru
+        payed_cash:
+          description: Сумма оплаты наличными
+          type: number
+          multipleOf: 0.01
+          format: double
+          example: 0
+        payed_cashless:
+          description: Сумма оплаты безналичными
+          type: number
+          multipleOf: 0.01
+          format: double
+          example: 10
+        payed_credit:
+          description: Сумма оплаты последующей оплаты кредитом
+          type: number
+          multipleOf: 0.01
+          format: double
+          example: 0
+        payed_consideration:
+          description: Сумма по чеку встречным предоставлением
+          type: number
+          multipleOf: 0.01
+          format: double
+          example: 0
+        payed_prepay:
+          description: Сумма оплаты предоплатой(аванс)
+          type: number
+          multipleOf: 0.01
+          format: double
+          example: 0
+        agent_info:
+          description: Атрибуты агента.
+          type: object
+          required:
+            - type
+            - supplier_phone
+          properties:
+            type:
+              description: >
+                Признак агента по предмету расчёта. (Тег 1057)
+                Возможные значенния:
+                  * `1` – банковский платежный агент. Оказание услуг
+                  покупателю (клиенту) пользователем, являющимся банковским
+                  платежным агентом.
+                  * `2` – банковский платежный субагент. Оказание
+                  услуг покупателю (клиенту) пользователем, являющимся банковским
+                  платежным субагентом.
+                  * `4` – платежный агент. Оказание услуг покупателю (клиенту)
+                  пользователем, являющимся платежным агентом.
+                  * `8` – платежный субагент. Оказание услуг покупателю
+                  (клиенту) пользователем, являющимся платежным субагентом.
+                  * `16` – поверенный. Осуществление расчета с покупателе
+                  (клиентом) пользователем, являющимся поверенным.
+                  * `32` – комиссионер. Осуществление расчета с
+                  покупателем (клиентом) пользователем, являющимся комиссионером.
+                  * `64` – другой тип агента. Осуществление расчета с покупателем
+                  (клиентом) пользователем, являющимся агентом и не являющимся
+                  банковским платежным агентом (субагентом), платежным агентом
+                  (субагентом), поверенным, комиссионером.
+              type: integer
+              enum:
+                - 1
+                - 2
+                - 4
+                - 8
+                - 16
+                - 32
+                - 64
+            transfer_operator_phone:
+              type: string
+              description: >-
+                Номера телефонов оператора по переводу денежных средств (Тег
+                1075)
+              maxLength: 20
+              example: +71111111111
+            transfer_operator_name:
+              description: Наименование оператора перевода. (Тег 1026)
+              type: string
+              maxLength: 64
+              example: Наименование оператора перевода.
+            transfer_operator_address:
+              description: Адрес оператора перевода. (Тег 1005)
+              type: string
+              maxLength: 256
+              example: Место нахождения оператора по переводу денежных средств
+            transfer_operator_inn:
+              description: ИНН оператора перевода (Тег 1016)
+              type: string
+              minLength: 10
+              maxLength: 12
+              example: 9411304925
+            payment_operator_operation:
+              description: >-
+                Наименование операции банковского платежного агента, банковского
+                платежного субагента. (Тег 1044)
+              type: string
+              maxLength: 64
+              example: Перевод д/с
+            payment_operator_phone:
+              type: string
+              description: >-
+                Номера телефонов платежного агента, платежного субагента,
+                банковского платежного агента, банковского платежного
+                субагента (Тег 1073)
+              maxLength: 20
+              example: +71111111111
+            receive_operator_phone:
+              type: string
+              description: >-
+                Номера контактных телефонов оператора по приему платежей (Тег
+                1074)
+              maxLength: 20
+              example: +71111111111
+            supplier_phone:
+              description: Телефоны поставщика. (Тег 1171)
+              type: string
+              maxLength: 20
+              example: +71111111111
+        additional_user_props:
+          description: Дополнительный реквизит пользователя (Тег 1084)
+          type: object
+          required:
+            - name
+            - value
+          properties:
+            name:
+              description: Наименование дополнительного реквизита пользователя (Тег 1085)
+              type: string
+              maxLength: 64
+              example: mdlp3108805
+            value:
+              description: Значение дополнительного реквизита пользователя. (Тег 1086)
+              type: string
+              maxLength: 256
+              example: ps45102&dnАБV492&&781&dd181110&sid71752852194630&
+        cashier_inn:
+          description: ИНН продавца
+          type: string
+          minLength: 12
+          maxLength: 12
+          example: 189107906013
+        callback_url:
+          type: string
+          maxLength: 256
+          example: https://385aebd79436e9f44f1e135ebd64b39c.m.pipedream.net
+        trade_acquiring:
+          description: Торговый эквайринг
+          type: object
+          required:
+            - type_operation
+          properties:
+            type_operation:
+              description: > 
+                  Тип операции
+                    * `1` – приход
+                    * `2` – возврат
+                    * `3` – отмена (в течении операционного дня)
+              type: integer
+              enum:
+                - 1
+                - 2
+                - 3
+            command_id_coming:
+              description: Идентификатор приходной операции
+              type: integer
+              example: 441027
+    JSON_shift:
+      type: object
+      required:
+        - author
+      properties:
+        author:
+          description: ФИО кассира
+          type: string
+          example: Иванов И.И
+    JSON_cash:
+      type: object
+      properties:
+        author:
+          description: ФИО кассира
+          type: string
+          example: Иванов И.И
+        description:
+          description: Описание
+          type: string
+          example: Внесение денег в кассу
+        sum:
+          description: Сумма внесения / изъятия денег из кассы
+          type: integer
+          example: '10'
+    JSON_report:
+      type: object
+      required:
+        - report_type
+        - author
+      properties:
+        report_type:
+          description: |
+            Тип Отчета. Возможные значение:
+            * `true` - Z - Отчет
+            * `false` - X - Отчет
+          type: boolean
+          example: true
+        author:
+          description: ФИО кассира
+          type: string
+          example: Иванов И.И
+    JSON_correction:
+      type: object
+      required:
+        - c_num
+        - author
+        - tag1055
+        - type
+        - correction_sum
+        - correction_info
+      properties:
+        c_num:
+          description: Уникальный номер документа из системы
+          type: string
+          maxLength: 128
+          example: 1603108283590
+        type:
+          description: |
+            Признак расчета. Возможные значения:
+            * `1` - Приход
+            * `2` - Расход
+          type: integer
+          enum:
+            - 1
+            - 2
+        tag1055:
+          description: |
+            Система налогообложения
+              * `1` - общая СН
+              * `2` – упрощенная СН (доходы);
+              * `4` – упрощенная СН (доходы минус расходы);
+              * `8` – единый налог на вмененный доход;
+              * `16` – единый сельскохозяйственный налог;
+              * `32` – патентная СН.
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 4
+            - 8
+            - 16
+            - 32
+          example: 1
+        author:
+          description: ФИО кассира
+          type: string
+          maxLength: 64
+          example: Кассир
+        cashier_inn:
+          description: ИНН кассира
+          type: string
+          maxLength: 12
+          example: 887405485310
+        correction_info:
+          type: object
+          required:
+            - type
+            - base_date
+            - base_number
+          properties:
+            type:
+              description: |
+                Тип коррекции. Возможные значения:
+                  * `1` - Самостоятельно
+                  * `2` - По предписанию
+              type: integer
+              enum:
+                - 1
+                - 2
+            base_date:
+              description: Дата совершения коррекции
+              maxLength: 10
+              type: string
+              format: date-time
+              example: 31.12.2022
+            base_number:
+              description: Номер предписания налогового органа
+              maxLength: 32
+              type: string
+              example: Коррекция чека №12345
+        correction_sum:
+          description: Сумма коррекции
+          type: array
+          minItems: 1
+          items: 
+            type: object
+            required:
+              - nds_value
+              - nds_not_apply
+            properties:
+              nds_value:
+                description: |
+                  Налоговая ставка НДС. Возможные значения:
+                    * `0` – НДС по ставке 0%;
+                    * `10` – НДС чека по ставке 10%;
+                    * `110` – НДС чека по расчетной ставке 10/110;
+                    * `20` – НДС чека по ставке 20%;
+                    * `120` – НДС чека по расчетной ставке 20/120.
+                type: integer
+                enum:
+                  - 0
+                  - 10
+                  - 20
+                  - 110
+                  - 120
+              nds_not_apply:
+                description: |
+                  для значения Без НДС (nds_not_apply: true),
+                  для оплат с НДС (nds_not_apply: false),
+                type: boolean
+                enum:
+                  - true
+                  - false
+              cash_sum:
+                description: Сумма оплаты наличными
+                type: number
+                multipleOf: 0.01
+                format: double
+                example: 0
+              cashless_sum:
+                description: Сумма оплаты безналичными
+                type: number
+                multipleOf: 0.01
+                format: double
+                example: 10
+              prepay_sum:
+                description: Сумма оплаты предоплатой(аванс)
+                type: number
+                multipleOf: 0.01
+                format: double
+                example: 0
+              credit_sum:
+                description: Сумма оплаты последующей оплаты кредитом
+                type: number
+                multipleOf: 0.01
+                format: double
+                example: 0
+              consideration_sum:
+                description: Сумма по чеку встречным предоставлением
+                type: number
+                multipleOf: 0.01
+                format: double
+                example: 0
+        
+    Shifts:
+      type: object
+      properties:
+        id:
+          description: ID смены
+          type: integer
+          format: int32
+          example: '446248135'
+        cashbox_id:
+          description: ID кассы
+          type: integer
+          format: int32
+          example: 110
+        num:
+          description: Номер смены
+          type: integer
+          format: int32
+          example: '273'
+        date_start:
+          description: Дата открытия
+          type: string
+          format: date-time
+          example: 2023-10-27T12:36:04+03:00
+        date_stop:
+          description: Дата закрытия
+          type: string
+          format: date-time
+          example: 2023-10-28T12:36:04+03:00
+          default: null
+        is_open:
+          description: Статус смены открыта/закрыта
+          type: boolean
+          format: boolean
+          example: 'true'
+        author:
+          description: Кассир
+          type: string
+          format: string
+          example: Иванов И.И.
+        checks_count:
+          description: Количество чеков в смене
+          type: integer
+          format: integer
+          example: '1166'
+        income_checks_count:
+          description: Количество чеков прихода
+          type: integer
+          format: integer
+          example: '583'
+        income_checks_sum:
+          description: Сумма чеков прихода
+          type: number
+          format: double
+          example: '10019741.64'
+        refund_checks_count:
+          description: Количество чеков возврата
+          type: integer
+          format: integer
+          example: '583'
+        refund_checks_sum:
+          description: Сумма чеков возврата
+          type: number
+          format: double
+          example: '10019741.64'
+        fn_number:
+          description: Номер ФН
+          type: string
+          format: string
+          example: '9999086204001836'
+        date_create:
+          description: Дата создания
+          type: string
+          format: date-time
+          example: 2023-10-27T12:36:04+03:00
+        date_update:
+          description: Дата обновления
+          type: string
+          format: date-time
+          example: 2023-10-28T13:00:01+03:00
+    Checks:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          description: ID команды
+          type: integer
+          format: int64
+          example: '446248135'
+        shift_ref:
+          description: ID смены
+          type: integer
+          format: int32
+          example: '32408'
+        user_ref:
+          description: ID пользователя
+          type: integer
+          format: int32
+          example: '589'
+        c_num:
+          description: Уникальный номер документа из системы
+          type: string
+          maxLength: 128
+          example: 1603108283590
+        author:
+          description: ФИО кассира
+          type: string
+          maxLength: 64
+          example: Кассир
+        date_create:
+          description: Дата создания команды
+          type: string
+          format: date-time
+          example: 2023-10-20T08:22:11+03:00
+        date_update:
+          description: Дата обновления команды
+          type: string
+          format: date-time
+          example: 2023-10-20T08:22:11+03:00
+        check_type_id:
+          description: |
+            Тип команды. Возможные значения:
+              * `1` - Приход
+              * `2` - Возврат
+              * `3` - Внесение
+              * `4` - Изъятие
+              * `7` - Чек коррекции 
+              * `8` - Закрытие смены
+              * `9` - Открытие смены
+              * `10` - Z- отчет
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 7
+            - 8
+            - 9
+            - 10
+        fn_number:
+          description: Номер ФН
+          type: string
+          format: string
+          example: '9999012904037041'
+          default: null
+        ecr_registration_number:
+          description: Регистрационный номер ККТ
+          type: string
+          format: string
+          example: '0000000000023011'
+          default: null
+        fiscal_document_number:
+          description: Фискальный номер документ
+          type: string
+          format: string
+          example: '1887'
+          default: ""
+        fiscal_document_attribute:
+          description: Фискальный признак документа
+          type: integer
+          format: int64
+          example: 933492249
+        result_shift_number:
+          description: Номер смены, в которой прошел чек.
+          type: integer
+          format: int32
+          example: 11
+          default: null
+        external_id:
+          description: Внешний идентификатор команды.
+          type: string
+          format: string
+          example: '1603108283590'
+        receipt_datetime:
+          description: Дата и время документа из ФН
+          type: string
+          format: date-time
+          example: '2023-10-05T08:00:21+03:00'
+          default: null
+        result_msg:
+          description: Сообщение о результете
+          type: string
+          format: string
+          example: ok
+          default: null
+        payment_mode_check:
+          description: >
+            Признак способа расчёта. Возможные значения:
+              * `full_prepayment` – предоплата 100%. Полная предварительная оплата
+              до момента передачи предмета расчета.
+              * `prepayment` – предоплата. Частичная предварительная оплата до
+              момента передачи предмета расчета.
+              * `advance` – аванс.
+              * `full_payment` – полный расчет. Полная оплата, в том числе с
+              учетом аванса (предварительной оплаты) в момент передачи предмета
+              расчета
+              * `partial_payment` – частичный расчет и кредит. Частичная оплата
+              предмета расчета в момент его передачи с последующей оплатой в
+              кредит
+              * `credit` – передача в кредит. Передача предмета расчета без его
+              оплаты в момент его передачи с последующей оплатой в кредит
+              * `credit_payment` – оплата кредита. Оплата предмета расчета после
+              его передачи с оплатой в кредит (оплата кредита)
+          type: string
+          enum:
+            - full_prepayment
+            - prepayment
+            - advance
+            - full_payment
+            - partial_payment
+            - credit
+            - credit_payment
+          example: full_prepayment
+        client_name:
+          description: Наименование покупателя
+          type: string
+          maxLength: 256
+          example: Иванов Иван Иванович
+        client_inn:
+          description: ИНН покупателя
+          type: string
+          minLength: 10
+          maxLength: 12
+          example: 322267314531
+        additional_up_name:
+          description: Наименование доп. реквизита пользователя
+          type: string
+          format: string
+          example: 'mdlp3108805'
+        additional_up_value:
+          description: Значение доп. реквизита пользователя
+          type: string
+          format: string
+          example: 'ps45102&dnАБV492&&781&dd181110&sid71752852194630&'
+        cashbox_integration_ref:
+          description: ID кассы
+          type: integer
+          format: int32
+          example: 11
+        remote_service_integrations_ref:
+          description: ID интеграции
+          type: integer
+          format: int32
+          example: 2161
+        status:
+          description: >-
+            Статус команды (коды) - 0 - команда принята онлайн сервисом - 1 -
+            команда передана в приложение - 2 - команда передана в ФР - 3 -
+            команда выполнена
+          type: integer
+          format: int32
+          example: '3'
+          default: '0'
+        result:
+          description: >-
+            Результат выполнения команды (коды) - 0 - команда в очереди - 1 -
+            команда выпоолнена успешно - 2 - команда выполнена с ошибками
+          type: integer
+          format: int32
+          example: '1'
+          default: '0'
+        total:
+          description: >-
+            Итоговая сумма документа в рублях с заданным в CMS округлением: -
+            целая часть не более 8 знаков; - дробная часть не более 2 знаков.
+            При регистрации в ККТ происходит расчёт фактической суммы:
+            суммирование значений sum позиций. Допустимо значение total в
+            диапазоне от целой части фактической суммы до точного значения
+            фактической суммы
+          type: integer
+          format: integer
+          example: '1000'
+          default: '0'
+        command_type_id:
+          description: |
+            Тип команды. Возможные значения:
+              * `1` - Приход
+              * `2` - Возврат
+              * `3` - Внесение
+              * `4` - Изъятие
+              * `7` - Чек коррекции 
+              * `8` - Закрытие смены
+              * `9` - Открытие смены
+              * `10` - Z- отчет
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 7
+            - 8
+            - 9
+            - 10
+        date_result:
+          description: Дата получения результата выполнения команды
+          type: string
+          format: date-time
+          example: '2020-10-30T13:42:48+00:00'
+        callback_url:
+          description: Адрес отправки колбека команды
+          type: string
+          maxLength: 256
+          example: https://385aebd79436e9f44f1e135ebd64b39c.m.pipedream.net
+          default: ""
+        full_payment_command:
+          description: Есть ли на эту комманду чек полного расчета.
+          type: integer
+          format: int32
+          example: '10634096'
+          default: null
+        refund_command:
+          description: ID команды возврата чека.
+          type: integer
+          format: int32
+          example: '10634099'
+          default: null
+        type:
+          description: Тип команды.
+          type: string
+          format: string
+          enum:
+            - printCheck
+            - printPurchaseReturn
+            - printCheckBuy
+            - printCheckBuyReturn
+            - printCashIn
+            - printCashOut
+            - printReport
+            - printCheckCorrection
+            - closeShift
+            - openShift
+          default: printCheck
+        receipt_url:
+          description: Ссылка на электронный чек
+          type: string
+          format: string
+          example: >-
+            https://electronic-receipt.class365.ru/?fd=8576&fpd=2684747465&kkt=0000000000014891
+        command:
+          oneOf:
+            - $ref: '#/components/schemas/JSON_check'
+            - $ref: '#/components/schemas/JSON_shift'
+            - $ref: '#/components/schemas/JSON_cash'
+            - $ref: '#/components/schemas/JSON_report'
+            - $ref: '#/components/schemas/JSON_correction'
+        acquiring:
+          description: Статус операции торгового эквайринга
+          type: object
+          required:
+            - status
+            - operation_message
+          properties:
+            status:
+              description: |
+                Статус операции. Возможные значения:
+                * `create` - Операция создана
+                * `processed` - Операция в обработке
+                * `cancel` - Операция отклонена
+                * `success` - Операция успешна
+              type: string
+              enum:
+                - create
+                - processed
+                - cancel
+                - success
+              example: success
+            operation_message:
+              description: Описание операции
+              type: string
+              maxLength: 256
+              example: Успешно

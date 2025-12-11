@@ -1,0 +1,161 @@
+openapi: "3.1.0"
+info:
+  title: "Authorization Service API"
+  version: "2025.11.25"
+servers:
+  - url: "https://stavtrack.online/api"
+paths:
+  /session/demo:
+    post:
+      summary: "Получить доступ к демо сессии"
+      tags:
+        - "/session"
+      operationId: "getDemo"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponseEntity"
+  /session/token:
+    post:
+      summary: "Авторизация"
+      tags:
+        - "/session"
+      operationId: "loginByDto"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginDto"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponseEntity"
+  /session/refresh:
+    post:
+      summary: "Обновить токен"
+      tags:
+        - "/session"
+      operationId: "refreshToken"
+      parameters:
+        - name: "Authorization"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshDto"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponseEntity"
+  /session/logout:
+    delete:
+      summary: "Выход из сессии"
+      tags:
+        - "/session"
+      operationId: "logout"
+      parameters:
+        - name: "Authorization"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponseEntity"
+  /session/token/user/{uid}:
+    post:
+      summary: "Авторизация с id юзера"
+      tags:
+        - "/session"
+      operationId: "tokenByRole"
+      parameters:
+        - name: "uid"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "Authorization"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponseEntity"
+  /server/status:
+    get:
+      summary: "Получить статус сервера"
+      tags:
+        - "/server"
+      operationId: "demoController"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+  /server/version:
+    get:
+      summary: "Получить версию сервера"
+      tags:
+        - "/server"
+      operationId: "version"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+components:
+  schemas:
+    HttpHeaders:
+      type: "object"
+      properties: { }
+    ResponseEntity:
+      type: "object"
+      properties:
+        headers:
+          $ref: "#/components/schemas/HttpHeaders"
+      required:
+        - "headers"
+    LoginDto:
+      type: "object"
+      properties:
+        email:
+          type: "string"
+          nullable: true
+        password:
+          type: "string"
+          nullable: true
+    RefreshDto:
+      type: "object"
+      properties:
+        refreshToken:
+          type: "string"
+          nullable: true

@@ -1,0 +1,4246 @@
+openapi: 3.0.0
+servers:
+  - description: online-check.business.ru
+    url: https://check.business.ru/open-api/v2/
+ 
+info:
+  version: '1.2'
+  title: "API сервиса Бизнес.Ру Онлайн-Чеки"
+    
+  description: | 
+  
+    [https://online-check.business.ru](https://online-check.business.ru)
+    
+      Применяется для ФФД 1.2. Описание [API для ФФД 1.05](https://app.swaggerhub.com/apis-docs/Business.Ru/check.business.ru/1.05)
+      
+    # SDK для работы с API на **PHP**.
+    
+      - [github api-lib-php](https://github.com/business-ru/open-api-sdk-php)
+      - [packagist](https://packagist.org/packages/business-ru/open-api-sdk-php) `composer require business-ru/open-api-sdk-php`
+
+    ### Коллекция запросов в Postman
+    
+    [BusinessRu-postman-open-api-v2.zip](https://online-check.business.ru/wp-content/uploads/2022/05/BusinessRu-postman-open-api-v2.zip)
+    
+    ### JSON Schema Validation
+    
+    [JSON-Schema-Validation-open-api-v2.zip](https://online-check.business.ru/wp-content/uploads/2022/05/JSON-Schema-Validation-open-api-v2.zip)
+    
+    # Отправка запроса на сервер
+    
+    При отправке запроса к API приложение должно выполнить ряд действий.   
+    
+    Для GET запросов подписывается текстовое представление итогового  JSON объекта, сформированного из параметров запроса.
+    Для POST запросов подписывается текстовое представление JSON объекта, передаваемого в качестве полезной нагрузки.
+
+    - параметры: `nonce` и `app_id`, где 
+    <br>
+    -- `nonce` - случайно генерируемая, уникальная для каждого запроса строка,
+    <br>
+    -- `app_id` - уникальный идентификатор, выданный при подключении интеграции на аккаунте.
+
+    - Полученный массив параметров сортируется в алфавитном порядке и
+    преобразуется в json строку - `params_string`.
+
+    - К запросу добавляется заголовок `sign`. Подпись запроса вычисляется по формуле: 
+
+    `sign = MD5( params_string + secret )`,
+
+    где параметром функции MD5 служит конкатенация компонентов:
+    <br>
+    -- `params_string` - url-кодированная строка параметров
+    <br>
+    -- `secret` - секретный ключ, полученный при подключении интеграции на аккаунте. 
+    
+    ## Авторизация
+    
+    Для отправки чеков через API используется уникальный идентификатор интеграции, он дает право доступа к системе посредством интеграционного API.
+
+     # Ограничения
+     В ответ на **GET** запросы API может возвращать данные постранично. Размер страницы по умолчанию - **250 записей**.  Размер может быть изменен в меньшую сторону путем указания параметра limit. Указав параметр page, приложение может получить любую необходимую страницу.
+     
+     # URL
+     Строка URL, как правило, состоит из четырёх элементов. БазовыйURL + Контроллер + Версия + Модель: [https://check.business.ru/open-api/v2/Command/](https://check.business.ru/open-api/v2/Command/)
+
+tags:
+- name: "token"
+  description: "Получение и восстановление токена" 
+- name: "Users"
+  description: "Работа с пользователем / аккаунтом"
+- name: "Command"
+  description: "Передача команд в ФР"
+- name: "Meta"
+  description: "Статистические данные"  
+
+paths:
+  '/Token':
+    get:
+      tags:
+      - "token"
+      summary: "Получить новый токен"
+      description: "Вернёт новый токен ❗️ **Устаревший метод**: Этот метод был помечен как устаревший и будет удален в будущих версиях API."
+      operationId: "getToken"
+      deprecated: true
+      parameters:
+      - name: "app_id"
+        in: "query"
+        description: "Уникальный id для интеграции"
+        required: true
+        schema:
+          type: "string"
+      - name: "nonce"
+        in: "query"
+        description: "Уникальная строка для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      - name: "sign"
+        in: "header"
+        description: "Уникальная подпись для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        200:
+          description: "Запрос выполнен успешно"
+          headers:
+            sign:
+              description: "Подпись запроса"
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "token"
+                - "expires"
+                properties:
+                  token:
+                    description: "Токен для последующих запросов к серверу"
+                    type: "string"
+                    format: "string36"
+                    example: "110e7894-q34f-egd1-3f48-dcf895d5cds4"
+                  expires:
+                    description: "Время жизни токена"
+                    type: "integer"
+                    format: "int"
+                    example: "7200"
+        401:
+          description: "Запрос не авторизован"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid sign"
+
+  '/Users':
+    get:
+      tags:
+      - "Users"
+      summary: "Данные пользователя по ID интеграции"
+      description: "Вернёт данные пользователя"
+      operationId: "getUserById"
+      parameters:
+      - name: "app_id"
+        in: "query"
+        description: "Уникальный id для интеграции"
+        required: true
+        schema:
+          type: "string"
+      - name: "nonce"
+        in: "query"
+        description: "Уникальная соль для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      - name: "sign"
+        in: "header"
+        description: "Уникальная подпись для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        200:
+          description: "Запрос выполнен успешно"
+          headers:
+            sign:
+              description: "Подпись запроса"
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "user_id"
+                properties:
+                  user_id:
+                    description: "ID пользователя"
+                    type: "integer"
+                    format: "int20"
+                    example: "446235"
+                  created_at:
+                    description: "Дата создания аккаунта"
+                    type: "string"
+                    format: "date-time"
+                    example: "2023-10-11T11:05:15+03:00"
+                  email:
+                    description: "Электронная почта"
+                    type: "string"
+                    format: "string64"
+                    example: "example@mail.ru"
+                    default: "null"
+                  first_name:
+                    description: "Имя генерального директора"
+                    type: "string"
+                    format: "string32"
+                    example: "Иван"
+                    default: "null"
+                  last_name:
+                    description: "Фамилия генерального директора"
+                    type: "string"
+                    format: "string32"
+                    example: "Иванов"
+                    default: "null"
+                  middle_name:
+                    description: "Отчество генерального директора"
+                    type: "string"
+                    format: "string32"
+                    example: "Иванович"
+                    default: "null"
+                  login_at:
+                    description: "Дата последнего входа"
+                    type: "string"
+                    format: "date-time"
+                    example: "2023-10-11T11:05:15+03:00"
+                    default: "null"
+                  timezone:
+                    description: "Номер телефона"
+                    type: "string"
+                    format: "timezone"
+                    example: "Europe/Moscow"
+        400:
+          description: "Некорректный запрос"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "you should use nonce"
+        401:
+          description: "Запрос не авторизован"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid app_id"
+        403:
+          description: "Доступ запрещён"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid sign"
+  
+  '/Account':
+    get:
+      tags:
+      - "Users"
+      summary: "Данные аккаунта по ID интеграции"
+      description: "Вернёт данные аккаунта"
+      operationId: "getAccountById"
+      parameters:
+      - name: "app_id"
+        in: "query"
+        description: "Уникальный id для интеграции"
+        required: true
+        schema:
+          type: "string"
+      - name: "nonce"
+        in: "query"
+        description: "Уникальная соль для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      - name: "sign"
+        in: "header"
+        description: "Уникальная подпись для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        200:
+          description: "Запрос выполнен успешно"
+          headers:
+            sign:
+              description: "Подпись запроса"
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "id"
+                properties:
+                  id:
+                    description: "ID аккаунта"
+                    type: "integer"
+                    format: "int20"
+                    example: "446235"
+                  auto_link_full_payment:
+                    description: "Автоматически привязывать чек полного расчёта к чеку предоплаты"
+                    type: "boolean"
+                    format: "boolean"
+                    example: "true"
+                    default: "false"
+                  auto_link_refund:
+                    description: "Автоматически привязывать чек возврата к чеку предоплаты"
+                    type: "boolean"
+                    format: "boolean"
+                    example: "true"
+                    default: "true"
+                  company_name:
+                    description: "Название аккаунта"
+                    type: "string"
+                    format: "string32"
+                    example: "ООО Эвотор"
+                    default: "null"
+                  com_port_mode:
+                    description: "Работа сканера в режиме COM-порта"
+                    type: "boolean"
+                    format: "boolean"
+                    example: "true"
+                    default: "false"
+                  crm_partner_id:
+                    description: "ID партнёра в CRM"
+                    type: "integer"
+                    format: "int64"
+                    example: "446235"
+                    default: "null"
+                  date_create:
+                    description: "Дата создания аккаунта"
+                    type: "string"
+                    format: "date-time"
+                    example: "2023-09-13T13:28:29+03:00"
+                  date_update:
+                    description: "Дата обновления данных"
+                    type: "string"
+                    format: "date-time"
+                    example: "2023-09-13T13:28:29+03:00"
+                  default_cashier_inn:
+                    description: "ИНН кассира по умолчанию"
+                    type: "string"
+                    format: "string32"
+                    maxLength: 12
+                    example: "959415740679"
+                    default: "null"
+                  default_cashier_name:
+                    description: "ФИО кассира по умолчанию"
+                    type: "string"
+                    format: "string32"
+                    example: "Кассир"
+                    default: "null"
+                  default_item_type:
+                    description: "Признак предмета расчета по умолчанию"
+                    type: "integer"
+                    format: "int16"
+                    example: "1"
+                    default: "null"
+                  default_measure:
+                    description: "Мера количества по умолчанию"
+                    type: "integer"
+                    format: "int32"
+                    example: "81"
+                    default: "null"
+                  default_nds:
+                    description: "НДС по умолчанию"
+                    type: "integer"
+                    format: "int16"
+                    example: "1"
+                    default: "null"
+                  default_payment_mode:
+                    description: "Способо расчёта по умолчанию"
+                    type: "integer"
+                    format: "int16"
+                    example: "1"
+                    default: "null"
+                  default_sno:
+                    description: "СНО по умолчанию"
+                    type: "integer"
+                    format: "int16"
+                    example: "1"
+                  email:
+                    description: "Электронная почта организации"
+                    type: "string"
+                    format: "string64"
+                    example: "example@mail.ru"
+                    default: "null"
+                  inn:
+                    description: "ИНН организации"
+                    type: "string"
+                    format: "string12"
+                    example: "1234567891"
+                    default: "null"
+                  kpp:
+                    description: "КПП организации"
+                    type: "string"
+                    format: "string9"
+                    example: "987654321"
+                    default: "null"
+                  legal_address:
+                    description: "Юридический адрес компании"
+                    type: "string"
+                    format: "string32"
+                    example: "г. Уфа, ул. Пушкина, д.2"
+                    default: "null"
+                  code:
+                    description: "Название аккаунта"
+                    type: "string"
+                    format: "string32"
+                    example: "shop"
+                  notification_about_not_available_kkt:
+                    description: "Оповещать об отсутствии связи с ККТ"
+                    type: "boolean"
+                    format: "boolean"
+                    example: "true"
+                    default: "false"
+                  postal_address:
+                    description: "Фактический адрес"
+                    type: "string"
+                    format: "string32"
+                    example: "г. Уфа, ул. Пушкина, д.2"
+                    default: "null"
+                  registration_source:
+                    description: "ID источника регистрации"
+                    type: "integer"
+                    format: "int32"
+                    example: "1"
+                  shop_url:
+                    description: "Место расчётов"
+                    type: "string"
+                    format: "string32"
+                    example: "г. Уфа, ул. Пушкина, д.2"
+        400:
+          description: "Некорректный запрос"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "you should use nonce"
+        401:
+          description: "Запрос не авторизован"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid app_id"
+        403:
+          description: "Доступ запрещён"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid sign"
+    
+
+  '/Command/{commandId}':
+    get:
+      tags:
+      - "Command"
+      summary: "Получение данных о команде по ID пользователя и ID команды"
+      description: "Вернёт информацию о команде"
+      operationId: "getCommandById"
+      parameters:
+      - name: "app_id"
+        in: "query"
+        description: "Уникальный id для интеграции"
+        required: true
+        schema:
+          type: "string"
+      - name: "commandId"
+        in: "path"
+        description: "ID команды"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - name: "nonce"
+        in: "query"
+        description: "Уникальная соль для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      - name: "sign"
+        in: "header"
+        description: "Уникальная подпись для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        200:
+          description: "Запрос выполнен успешно"
+          headers:
+            sign:
+              description: "Подпись запроса"
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Command'
+        400:
+          description: "Некорректный запрос"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "you should use nonce"
+        401:
+          description: "Запрос не авторизован"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid app_id"
+        403:
+          description: "Доступ запрещён"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid sign"
+          
+          
+  '/Command':
+    get:
+      tags:
+      - "Command"
+      summary: "Получение данных о команде в ФР по ID пользователя и ID команды"
+      description: "Вернёт информацию о команде ФР с учётом фильтров"
+      operationId: "getCommands"
+      parameters:
+      - name: "app_id"
+        in: "query"
+        description: "Уникальный id для интеграции"
+        required: true
+        schema:
+          type: "string"
+      - name: "filter_date_create_from"
+        in: "query"
+        description: "Фильтр команд по дате создания *ОТ*"
+        required: false
+        schema:
+          type: "string"
+        example: "10-02-2022T00:00:00"
+      - name: "filter_date_create_to"
+        in: "query"
+        description: "Фильтр команд по дате создания *ДО*"
+        required: false
+        schema:
+          type: "string"
+        example: "27-02-2022T23:59:59"
+      - name: "filter_date_update_from"
+        in: "query"
+        description: "Фильтр команд по дате изменения *ОТ*"
+        required: false
+        schema:
+          type: "string"
+        example: "10-02-2022T00:00:00"
+      - name: "filter_date_update_to"
+        in: "query"
+        description: "Фильтр команд по дате изменения *ДО*"
+        required: false
+        schema:
+          type: "string"
+        example: "27-02-2022T23:59:59"
+      - name: "filter_date_result_from"
+        in: "query"
+        description: "Фильтр команд по дате получения результата выполнения команды *ОТ*"
+        required: false
+        schema:
+          type: "string"
+        example: "10-02-2022T00:00:00"
+      - name: "filter_date_result_to"
+        in: "query"
+        description: "Фильтр команд по дате получения результата выполнения команды *ДО*"
+        required: false
+        schema:
+          type: "string"
+        example: "27-02-2022T23:59:59"
+      - name: "page"
+        in: "query"
+        description: "Номер страницы выборки результатов"
+        required: false
+        schema:
+          type: "string"
+          format: "int6"
+      - name: "c_num"
+        in: "query"
+        description: "Уникальный номер документа из системы"
+        required: false
+        schema:
+          type: "string"
+          format: "int128"
+      - name: "nonce"
+        in: "query"
+        description: "Уникальная соль для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      - name: "sign"
+        in: "header"
+        description: "Уникальная подпись для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        200:
+          description: "Запрос выполнен успешно"
+          headers:
+            sign:
+              description: "Подпись запроса"
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "data"
+                properties:
+                  data:
+                    type: "array"
+                    minItems: 0
+                    maxItems: 250
+                    items:
+                      $ref: '#/components/schemas/Command'
+        400:
+          description: "Некорректный запрос"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "you should use nonce"           
+        401:
+          description: "Запрос не авторизован"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid app_id"
+        403:
+          description: "Доступ запрещён"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid sign"
+    post:
+      tags:
+      - "Command"
+      summary: "Передача команд в ФР по ID пользователя"
+      description: "Добавит команду в очередь на выполнение ФР"
+      operationId: "setCommand"
+      requestBody:
+        required: true
+        content:
+          application/json; charset=utf-8:
+            schema:
+              type: "object"
+              required:
+              - "app_id"
+              - "command"
+              - "nonce"
+              - "type"
+              properties:
+                app_id:
+                  description: "Уникальный id для интеграции"
+                  type: "string"
+                  example: a640b6f5-71cc-4937-8a77-7bc32050793e
+                cashbox_id:
+                  description: "id кассы"
+                  type: "integer"
+                  example: "110"
+                command:
+                  oneOf:
+                    - $ref: '#/components/schemas/JSON_check'
+                    - $ref: '#/components/schemas/JSON_shift'
+                    - $ref: '#/components/schemas/JSON_cash'
+                    - $ref: '#/components/schemas/JSON_report'
+                    - $ref: '#/components/schemas/JSON_correction'
+                nonce:
+                  description: "Уникальный id для интеграции"
+                  type: "string"
+                  example: salt_1645017707212
+                type:
+                  description: |
+                    Тип команды. Возможные значения:
+                    * `printCheck` - Чек прихода
+                    * `printPurchaseReturn` - Чек возврата прихода
+                    * `printCheckBuy` - Чек расхода
+                    * `printCheckBuyReturn` - Чек возврата расхода
+                    * `printCashIn` - Внесение денег
+                    * `printCashOut` - Выдача денег
+                    * `printReport` - Z-отчёт / X-отчёт
+                    * `printCheckCorrection` - Чек коррекции прихода
+                    * `closeShift` - Закрытие смены
+                    * `openShift` - Открытие смены
+                    * `printCheckCorrectionReturn ` - Чек коррекции возврата прихода
+                    * `printBuyCorrection ` - Чек коррекции расхода
+                    * `printBuyReturnCorrection` - Чек коррекции возврата расхода
+                  type: "string"
+                  enum:
+                  - printCheck
+                  - printPurchaseReturn
+                  - printCheckBuy
+                  - printCheckBuyReturn
+                  - printCashIn
+                  - printCashOut
+                  - printReport
+                  - printCheckCorrection
+                  - closeShift
+                  - openShift
+                  - printCheckCorrectionReturn
+                  - printBuyCorrection
+                  - printBuyReturnCorrection
+                  example: printCheck
+      parameters:
+      - name: "sign"
+        in: "header"
+        description: "Уникальная подпись для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        200:
+          description: "В результате сервер вернёт id команды. Далее можно получать информацию о выполнении этой команды ФР"
+          headers:
+            sign:
+              description: "Подпись запроса"
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "command_id"
+                properties:
+                  command_id:
+                    description: "ID присвоенный данной команде"
+                    type: "integer"
+                    format: "int64"
+                    example: "5415645125"
+        400:
+          description: "Некорректный запрос"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "errors"
+                - "message"
+                - "result"
+                properties:
+                  errors:
+                    type: "object"
+                    required: 
+                      - "type"
+                    properties:
+                      type:
+                        type: "array"
+                        items:
+                          description: "Результат выполнения запроса"
+                          type: "string"
+                          format: "string36"
+                          example: "Выбранное значение для type некорректно."
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "Неверно заполнены поля"
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1022"
+        401:
+          description: "Запрос не авторизован"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid app_id"
+        403:
+          description: "Доступ запрещён"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid sign"
+        422:
+          description: "Некорректные данные"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "error"
+                  - "status"
+                  - "timestamp"
+                properties:
+                  error:
+                    type: "object"
+                    required:
+                      - "error_id"
+                      - "code"
+                      - "text"
+                      - "type"
+                    properties:
+                      error_id:
+                        description: "Уникальный идентификатор ошибки."
+                        type: "string"
+                        example: "ab894f6a-4955-44c2-9a70-8c6d97b4f6fb"
+                      code:
+                        description: "Код ошибки."
+                        type: "number"
+                        example: "40"
+                      text:
+                        description: "Текст ошибки."
+                        type: "string"
+                        example: "Некорректный запрос.  command.goods.0.sum: Поле обязательно для заполнения.  Необходимо повторить запрос с корректными данными"
+                      type:
+                        description: "Тип ошибки."
+                        type: "string"
+                        example: "system"
+                  status:
+                    description: "Статус ошибки."
+                    type: "string"
+                    format: "text"
+                    example: "fail"
+                  timestamp:
+                    description: "Дата и время ответа."
+                    type: "string"
+                    format: "date-time"
+                    example: "14.02.2022 05:44:47"       
+  '/StateSystem':
+    get:
+      tags:
+      - "Meta"
+      summary: "Получение данных о состоянии системы"
+      description: "Вернёт информацию о текущем состоянии системы"
+      operationId: "getStateSystem"
+      parameters:
+      - name: "app_id"
+        in: "query"
+        description: "Уникальный id для интеграции"
+        required: true
+        schema:
+          type: "string"
+      - name: "nonce"
+        in: "query"
+        description: "Уникальная соль для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      - name: "sign"
+        in: "header"
+        description: "Уникальная подпись для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        200:
+          description: "Запрос выполнен успешно"
+          headers:
+            sign:
+              description: "Подпись запроса"
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "date_last_connect_app"
+                - "date_last_connect_ofd"
+                - "printer_status"
+                - "printer_name"
+                - "cashbox_id"
+                properties:
+                  date_last_connect_app:
+                    description: "Дата последней передачи данных в приложение windows"
+                    type: "string"
+                    format: "string"
+                    example: "2023-11-09T07:44:17+03:00"
+                    default: "null"
+                  date_last_connect_ofd:
+                    description: "Дата последней передачи данных в ОФД"
+                    type: "string"
+                    format: "string"
+                    example: "2023-11-09T07:44:17+03:00"
+                    default: "null"
+                  printer_status:
+                    description: "Статус ФР (код состояния). 0 - ФР не найден, 1 - ФР готов к работе  ..."
+                    type: "integer"
+                    format: "int16"
+                    example: "1"
+                    default: "0"
+                  app_name:
+                    description: "Имя приложения"
+                    type: "string"
+                    format: "string"
+                    example: "Онлайн-касса"
+                    default: "null"
+                  app_version:
+                    description: "Версия приложения"
+                    type: "string"
+                    format: "string"
+                    example: "1.0.0"
+                    default: "null"
+                  os_name:
+                    description: "Название ОС"
+                    type: "string"
+                    format: "string"
+                    example: "Windows 10"
+                    default: "null"
+                  pc_name:
+                    description: "Имя ПК"
+                    type: "string"
+                    format: "string"
+                    example: "Work"
+                    default: "null"
+                  printer_name:
+                    description: "Название ФР"
+                    type: "string"
+                    format: "string"
+                    example: "Атол 30Ф"
+                    default: "null"
+                  cashbox_id:
+                    description: "ID кассы"
+                    type: "string"
+                    format: "string"
+                    example: "110"
+        400:
+          description: "Некорректный запрос"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "you should use nonce"    
+        401:
+          description: "Запрос не авторизован"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid app_id"
+        403:
+          description: "Доступ запрещён"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid sign"
+  '/Shift':
+    get:
+      tags:
+      - "Meta"
+      summary: "Получение данных о сменах"
+      description: "Вернёт информацию о сменах с учётом фильтров"
+      operationId: "getShift"
+      parameters:
+      - name: "app_id"
+        in: "query"
+        description: "Уникальный id для интеграции"
+        required: true
+        schema:
+          type: "string"
+      - name: "filter_date_create_from"
+        in: "query"
+        description: "Фильтр по дате создания *ОТ*"
+        required: false
+        schema:
+          type: "string"
+          format: "date-time"
+        example: "28-09-2022T00:00:00"
+      - name: "filter_date_create_to"
+        in: "query"
+        description: "Фильтр по дате создания *ДО*"
+        required: false
+        schema:
+          type: "string"
+          format: "date-time"
+        example: "05-10-2022T23:59:59"
+      - name: "filter_date_update_from"
+        in: "query"
+        description: "Фильтр по дате изменения *ОТ*"
+        required: false
+        schema:
+          type: "string"
+          format: "date-time"
+        example: "30-11-2021T00:00:00"
+      - name: "filter_date_update_to"
+        in: "query"
+        description: "Фильтр по дате изменения *ДО*"
+        required: false
+        schema:
+          type: "string"
+          format: "date-time"
+        example: "30-11-2021T23:59:59"
+      - name: "filter_date_start_from"
+        in: "query"
+        description: "Фильтр по дате открытия смены *ОТ*"
+        required: false
+        schema:
+          type: "string"
+          format: "date-time"
+        example: "27-09-2022T00:00:00"
+      - name: "filter_date_start_to"
+        in: "query"
+        description: "Фильтр по дате открытия смены *ДО*"
+        required: false
+        schema:
+          type: "string"
+          format: "date-time"
+        example: "29-09-2022T23:59:59"
+      - name: "filter_date_stop_from"
+        in: "query"
+        description: "Фильтр по дате закрытия смены *ОТ*"
+        required: false
+        schema:
+          type: "string"
+          format: "date-time"
+        example: "04-10-2022T00:00:00"
+      - name: "filter_date_stop_to"
+        in: "query"
+        description: "Фильтр по дате закрытия смены *ДО*"
+        required: false
+        schema:
+          type: "string"
+          format: "date-time"
+        example: "06-10-2022T23:59:59"
+      - name: "page"
+        in: "query"
+        description: "Номер страницы выборки результатов"
+        required: false
+        schema:
+          type: "string"
+          format: "int6"
+      - name: "nonce"
+        in: "query"
+        description: "Уникальная соль для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      - name: "sign"
+        in: "header"
+        description: "Уникальная подпись для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        200:
+          description: "Запрос выполнен успешно"
+          headers:
+            sign:
+              description: "Подпись запроса"
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "data"
+                properties:
+                  data:
+                    type: "array"
+                    minItems: 0
+                    maxItems: 250
+                    items:
+                      $ref: '#/components/schemas/Shifts'
+        400:
+          description: "Некорректный запрос"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "you should use nonce"  
+        401:
+          description: "Запрос не авторизован"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid app_id"
+        403:
+          description: "Доступ запрещён"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid sign"
+    
+  '/Check':
+    get:
+      tags:
+      - "Meta"
+      summary: "Получение данных о чеках"
+      description: "Вернёт информацию о чеках с учётом фильтров"
+      operationId: "getCheck"
+      parameters:
+      - name: "app_id"
+        in: "query"
+        description: "Уникальный id для интеграции"
+        required: true
+        schema:
+          type: "string"
+      - name: "filter_date_from"
+        in: "query"
+        description: "Фильтр по дате создания *ОТ*"
+        required: false
+        schema:
+          type: "string"
+        example: "10-02-2022T00:00:00"
+      - name: "filter_date_to"
+        in: "query"
+        description: "Фильтр по дате создания *ДО*"
+        required: false
+        schema:
+          type: "string"
+        example: "27-02-2022T23:59:59"
+      - name: "shift_ref"
+        in: "query"
+        description: "Фильтр по номеру смены"
+        required: false
+        schema:
+          type: "string"
+          format: "int64"
+      - name: "page"
+        in: "query"
+        description: "Номер страницы выборки результатов"
+        required: false
+        schema:
+          type: "string"
+          format: "int6"
+      - name: "nonce"
+        in: "query"
+        description: "Уникальная соль для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      - name: "sign"
+        in: "header"
+        description: "Уникальная подпись для каждого запроса"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        200:
+          description: "Запрос выполнен успешно"
+          headers:
+            sign:
+              description: "Подпись запроса"
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "data"
+                properties:
+                  data:
+                    type: "array"
+                    minItems: 0
+                    maxItems: 250
+                    items:
+                      $ref: '#/components/schemas/Checks'
+        400:
+          description: "Некорректный запрос"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "you should use nonce"  
+        401:
+          description: "Запрос не авторизован"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid app_id"
+        403:
+          description: "Доступ запрещён"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                - "result"
+                - "message"
+                properties:
+                  result:
+                    description: "Результат выполнения запроса"
+                    type: "string"
+                    format: "string36"
+                    example: "1001"
+                  message:
+                    description: "Сообщение об ошибке"
+                    type: "string"
+                    format: "string36"
+                    example: "invalid sign"
+components:
+  schemas:
+    Command:
+      type: "object"
+      required:
+      - "id"
+      properties:
+        id:
+          description: "ID команды"
+          type: "integer"
+          format: "int64"
+          example: "446248135"
+        shift_ref:
+          description: "ID смены"
+          type: "integer"
+          format: "int64"
+          example: "32408"
+        user_ref:
+          description: "ID пользователя"
+          type: "integer"
+          format: "int64"
+          example: "589"
+        c_num:
+          description: "Уникальный номер документа из системы"
+          type: "string"
+          maxLength: 128
+          example: "1603108283590"
+        author:
+          description: "ФИО кассира"
+          type: "string"
+          maxLength: 64
+          example: "Кассир"
+        date_create:
+          description: "Дата создания команды"
+          type: "string"
+          format: "date-time"
+          example: "31.12.2019T23:59:59+03"
+        date_update:
+          description: "Дата обновления команды"
+          type: "string"
+          format: "date-time"
+          example: "31.12.2019T23:59:59+03"
+        check_type_id: 
+          description: |
+            Тип команды. Возможные значения:
+            * `1` - Приход
+            * `2` - Возврат
+            * `3` - Внесение
+            * `4` - Изъятие
+            * `7` - Чек коррекции прихода
+            * `8` - Закрытие смены
+            * `9` - Открытие смены
+            * `10` - Z- отчет
+            * `11` - Чек коррекции возврата прихода
+            * `12` - Чек коррекции расхода
+            * `13` - Чек коррекции возврата расхода
+          type: "integer"
+          enum:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 7
+            - 8
+            - 9
+            - 10
+            - 11
+            - 12
+            - 13
+        fn_number:
+          description: "Номер ФН"
+          type: "string"
+          format: "string"
+          example: "9999048702007031"
+          default: "null"
+        ecr_registration_number:
+          description: "Регистрационный номер ККТ"
+          type: "string"
+          format: "string"
+          example: "0000000000023011"
+          default: "null"
+        fiscal_document_number:
+          description: "Фискальный номер документ"
+          type: "string"
+          format: "string"
+          example: "1887"
+          default: ""
+        fiscal_receipt_number:
+          description: "Порядковый номер чека в смене"
+          type: "integer"
+          format: "int32"
+          example: "1887"
+          default: "null"
+        fiscal_document_attribute:
+          description: "Фискальный признак документа"
+          type: "integer"
+          format: "int64"
+          example: "933492249"
+        result_shift_number:
+          description: "Номер смены, в которой прошел чек."
+          type: "integer"
+          format: "int32"
+          example: "126"
+          default: "null"
+        external_id:
+          description: "Внешний идентификатор команды."
+          type: "string"
+          format: "string"
+          example: "1603108283590"
+          default: "null"
+        receipt_datetime:
+          description: "Дата и время документа из ФН"
+          type: "string"
+          format: "date-time"
+          example: "2020-10-30T13:42:48+00:00"
+          default: "null"
+        result_msg:
+          description: "Сообщение о результате"
+          type: "string"
+          format: "string"
+          example: "ok"
+          default: "null"
+        payment_mode_check:
+          description: |
+            Признак способа расчёта. Возможные значения:
+            * `full_prepayment` – предоплата 100%. Полная предварительная оплата до момента передачи предмета расчета.
+            * `prepayment` – предоплата. Частичная предварительная оплата до момента передачи предмета расчета.
+            * `advance` – аванс.
+            * `full_payment` – полный расчет. Полная оплата, в том числе с учетом аванса (предварительной оплаты) в момент передачи предмета расчета
+            * `partial_payment` – частичный расчет и кредит. Частичная оплата предмета расчета в момент его передачи с последующей оплатой в кредит
+            * `credit` – передача в кредит. Передача предмета расчета без его оплаты в момент его передачи с последующей оплатой в кредит
+            * `credit_payment` – оплата кредита. Оплата предмета расчета после его передачи с оплатой в кредит (оплата кредита)
+          type: "string"
+          enum: 
+            - "full_prepayment"
+            - "prepayment"
+            - "advance"
+            - "full_payment"
+            - "partial_payment"
+            - "credit"
+            - "credit_payment"
+          example: "full_prepayment"
+        client_name:
+          description: "Наименование покупателя"
+          type: "string"
+          maxLength: 256
+          example: "Иванов Иван Иванович"
+        client_inn:
+          description: "ИНН покупателя"
+          type: "string"
+          minLength: 10
+          maxLength: 12
+          example: "5740673712"
+        client_birthdate:
+          description: "Дата рождения покупателя (клиента) в формате ДД.ММ.ГГГГ (ровно 10 символов)"
+          minLength: 10
+          type: "string"
+          example: "1990.12.30"
+        client_citizenship:
+          description: "Числовой код страны, гражданином которой является покупатель (клиент)"
+          maxLength: 3
+          type: "string"
+          format: "string"
+          example: "123"
+        client_document_code:
+          description:  | 
+            Числовой код вида документа, удостоверяющего личность
+          minLength: 2
+          type: "string"
+          example: "21"
+        client_document_data:
+          description: "Реквизиты документа, удостоверяющего личность"
+          type: "string"
+          maxLength: 64
+          example: "4507 443564"
+        client_address:
+          description: "Адрес покупателя (клиента), грузополучателя"
+          type: "string"
+          maxLength: 256
+          example: "г. Уфа, ул. Пушкина, д. 1"
+        operating_cp_name:
+          description: "Идентификатор операции"
+          type: "string"
+          example: "0"
+        operating_cp_value:
+          description: "Данные операции"
+          type: "string"
+          maxLength: 64
+          example: "ps45102&dnАБV492&&781&dd181110&sid71752852194630&"
+        operating_cp_timestamp:
+          description: "Дата и время операции"
+          type: "string"
+          format: "date-time"
+          maxLength: 64
+          example: "14.02.2022 04:51:04"
+        sectoral_cp_number:
+          description: "Номер нормативного акта федерального органа исполнительной власти, регламентирующего порядок заполнения реквизита `значение отраслевого реквизита`"
+          type: "string"
+          maxLength: 32
+          example: "123456"
+        sectoral_cp_federal_id:
+          description: "Идентификатор ФОИВ"
+          type: "string"
+          example: "001"
+        sectoral_cp_value:
+          description: "Состав значений, определенных нормативного актом федерального органа исполнительной власти"
+          type: "string"
+          maxLength: 256
+          example: "123456"
+        sectoral_cp_date:
+          description: "Дата нормативного акта федерального органа исполнительной власти, регламентирующего порядок заполнения реквизита `значение отраслевого реквизита`"
+          minLength: 10
+          type: "string"
+          format: "date"
+          example: "2022-02-11"
+        additional_cp:
+          description: "Дополнительный реквизит чека"
+          type: "string"
+          maxLength: 16
+          example: "445334544"
+        additional_up_name:
+          description: "Наименование дополнительного реквизита пользователя"
+          type: "string"
+          maxLength: 64
+          example: "mdlp3108805"
+        additional_up_value:
+          description: "Значение дополнительного реквизита пользователя"
+          type: "string"
+          maxLength: 256
+          example: "ps45102&dnАБV492&&781&dd181110&sid71752852194630&"
+        cashbox_integration_ref:
+          description: "ID кассы"
+          type: "integer"
+          format: "int32"
+          example: "11"
+        remote_service_integrations_ref:
+          description: "ID интеграции"
+          type: "integer"
+          format: "int32"
+          example: "2161"
+        cashier_inn:
+          description: "ИНН кассира"
+          type: "string"
+          minLength: 12
+          example: "887405485310"
+        status:
+          description: "Статус команды (коды) - 0 - команда принята онлайн сервисом - 1 - команда передана в приложение - 2 - команда передана в ФР - 3 - команда выполнена"
+          type: "integer"
+          format: "int32"
+          example: "3"
+          default: "0"
+        result:
+          description: "Результат выполнения команды (коды) - 0 - команда в очереди - 1 - команда выпоолнена успешно - 2 - команда выполнена с ошибками"
+          type: "integer"
+          format: "int32"
+          example: "1"
+          default: "0"
+        total:
+          description: "Итоговая сумма документа в рублях с заданным в CMS округлением: - целая часть не более 8 знаков; - дробная часть не более 2 знаков. При регистрации в ККТ происходит расчёт фактической суммы: суммирование значений sum позиций. Допустимо значение total в диапазоне от целой части фактической суммы до точного значения фактической суммы"
+          type: "integer"
+          format: "integer"
+          example: "1000"
+          default: "0"
+        command_type_id:
+          description: |
+            Тип команды. Возможные значения:
+            * `1` - Приход
+            * `2` - Возврат
+            * `3` - Внесение
+            * `4` - Изъятие
+            * `7` - Чек коррекции прихода
+            * `8` - Закрытие смены
+            * `9` - Открытие смены
+            * `10` - Z- отчет
+            * `11` - Чек коррекции возврата прихода
+            * `12` - Чек коррекции расхода
+            * `13` - Чек коррекции возврата расхода
+          type: "integer"
+          enum:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 7
+            - 8
+            - 9
+            - 10
+            - 11
+            - 12
+            - 13
+        date_result:
+          description: "Дата получения результата выполнения команды"
+          type: "string"
+          format: "date-time"
+          example: "2020-10-30T13:42:48+00:00"
+        callback_url:
+          description: "Адрес отправки колбека команды"
+          type: "string"
+          maxLength: 256
+          example: "https://385aebd79436e9f44f1e135ebd64b39c.m.pipedream.net"
+        full_payment_command:
+          description: "Есть ли на эту комманду чек полного расчета."
+          type: "integer"
+          format: "int32"
+          example: "10634096"
+          default: "null"
+        refund_command:
+          description: "ID команды возврата чека."
+          type: "integer"
+          format: "int32"
+          example: "10634099"
+          default: "null"
+        type:
+          description: "Тип команды."
+          type: "string"
+          format: "string"
+          enum:
+            - printCheck 
+            - printPurchaseReturn
+            - printCheckBuy
+            - printCheckBuyReturn
+            - printCashIn
+            - printCashOut
+            - printReport
+            - printCheckCorrection
+            - closeShift
+            - openShift
+            - printCheckCorrectionReturn
+            - printBuyCorrection
+            - printBuyReturnCorrection
+          default: "printCheck"
+        receipt_url:
+          description: "Ссылка на электронный чек"
+          type: "string"
+          example: "https://electronic-receipt.class365.ru/?fd=8576&fpd=2684747465&kkt=0000000000014891"
+          default: "null"
+        command:
+          oneOf:
+            - $ref: '#/components/schemas/JSON_check'
+            - $ref: '#/components/schemas/JSON_shift'
+            - $ref: '#/components/schemas/JSON_cash'
+            - $ref: '#/components/schemas/JSON_report'
+            - $ref: '#/components/schemas/JSON_correction'
+  
+            
+    JSON_check:
+      type: "object"
+      required:
+        - "c_num"
+        - "goods"
+        - "author"
+        - "tag1055"
+        - "payed_cash"
+        - "payed_cashless"
+        - "payed_credit"
+        - "payed_prepay"
+        - "payed_consideration"
+      properties:
+        c_num:
+          description: "Уникальный номер документа из системы"
+          type: "string"
+          maxLength: 128
+          example: "1603108283590"
+        print_check:
+          description: |
+              Печатать бумажный чек
+              * `true` - Печатать
+              * `false` - Не печатать
+          type: "boolean"
+          example: "true"
+        goods:
+          type: "array"
+          minItems: 1
+          maxItems: 100
+          items:
+            type: "object"
+            required:
+            - "price"
+            - "count"
+            - "sum"
+            - "measure"
+            - "payment_mode"
+            - "item_type"
+            - "nds_value"
+            - "nds_not_apply"
+            properties:
+              name:
+                description: "Наименование товара, работы, услуги, платежа, выплаты, иного предмета расчета. (Тег 1030)"
+                type: "string"
+                example: "Услуги доставки"
+              price:
+                description: "Цена за единицу товара, работы, услуги, платежа, выплаты, иного предмета расчета с учетом скидок и наценок (Тег 1079)"
+                type: "number"
+                format: "double"
+                maximum: 999999999.99
+                multipleOf: 0.01
+                example: 10
+              count:
+                description: "Количество/вес. В случае, если предметом расчета является товар, подлежащий обязательной маркировке средством идентификации (передан mark_code), параметр должен принимать значение, равное `1`. (Тег 1023)"
+                type: "number"
+                format: "double"
+                maximum: 99999.999
+                multipleOf: 0.01
+                example: 1
+              sum:
+                description: "Сумма в рублях. Значение реквизита `стоимость предмета расчета с учетом скидок и наценок` должно быть равно произведению значения реквизита `цена за единицу предмета расчета с учетом скидок и наценок`, умноженному на значение реквизита `количество предмета расчета`. (Тег 1043)"
+                type: "number"
+                format: "double"
+                maximum: 999999999.99
+                multipleOf: 0.01
+                example: 10
+              measure:
+                description: |
+                  Единицы измерения количества предмета расчета. (Тег 2108)
+                  Может принимать одно из значений:
+                  * `0` - Применяется для предметов расчета, которые могут быть реализованы поштучно или единицами (а также в случае, если предметом расчета является товар, подлежащий обязательной маркировке средством идентификации (передан mark_code))
+                  * `10` - Грамм
+                  * `11` - Килограмм
+                  * `12` - Тонна
+                  * `20` - Сантиметр
+                  * `21` - Дециметр
+                  * `22` - Метр
+                  * `30` - Квадратный сантиметр
+                  * `31` - Квадратный дециметр
+                  * `32` - Квадратный метр
+                  * `40` - Миллилитр
+                  * `41` - Литр
+                  * `42` - Кубический метр
+                  * `50` - Киловатт час
+                  * `51` - Гигакалория
+                  * `70` - Сутки (день)
+                  * `71` - Час
+                  * `72` - Минута
+                  * `73` - Секунда
+                  * `80` - Килобайт
+                  * `81` - Мегабайт
+                  * `82` - Гигабайт
+                  * `83` - Терабайт
+                  * `255` - Применяется при использовании иных единиц измерения
+                type: "number"
+                enum: 
+                  - 0
+                  - 10
+                  - 11
+                  - 12
+                example: 0
+              payment_mode:
+                description: |
+                  Признак способа расчёта. (Тег 1214)
+                  Возможные значения:
+                  * `1` - Предоплата 100%.
+                  Полная предварительная оплата до момента передачи предмета расчета. 
+                  * `2` - Предоплата. Частичная предварительная оплата до момента передачи предмета расчета.
+                  * `3` - Аванс.
+                  * `4` - Полный расчет. Полная оплата, в том числе с учетом аванса в момент передачи предмета расчета.
+                  * `5` - Частичный расчет и кредит. Частичная оплата предмета расчета в момент его передачи с последующей оплатой в кредит.
+                  * `6` - Передача в кредит. Передача предмета расчета без его оплаты в момент его передачи с последующей оплатой в кредит.
+                  * `7` - Оплата кредита. Оплата предмета расчета после его передачи с оплатой в кредит (оплата кредита).
+                type: "number"
+                enum:
+                  - 1
+                  - 2
+                  - 3
+                  - 4
+                  - 5
+                  - 6
+                  - 7
+              item_type:
+                description: |
+                  Признак предмета расчёта (Тег 1212) (1-27 и 30-33) 
+                    * `1` - ТОВАР. О реализуемом товаре, за исключением подакцизного товара (наименование и иные сведения, описывающие товар).
+                    * `2` - ПОДАКЦИЗНЫЙ ТОВАР. О реализуемом подакцизном товаре (наименование и иные сведения, описывающие товар). 
+                    * `3` - РАБОТА. О выполняемой работе (наименование и иные сведения, описывающие работу). 
+                    * `4` - УСЛУГА. Об оказываемой услуге (наименование и иные сведения, описывающие услугу).
+                    * `5` - СТАВКА АЗАРТНОЙ ИГРЫ или СТАВКА ИГРЫ. О приеме ставок при осуществлении деятельности по проведению азартных игр.
+                    * `6` - ВЫИГРЫШ АЗАРТНОЙ ИГРЫ. О выплате денежных средств в виде выигрыша при осуществлении деятельности по проведению азартных игр
+                    * `7` - ЛОТЕРЕЙНЫЙ БИЛЕТ или СТАВКА ЛОТЕРЕИ. О приеме денежных средств при реализации лотерейных билетов, электронных лотерейных билетов, приеме лотерейных ставок при осуществлении деятельности по проведению лотерей
+                    * `8` - ВЫИГРЫШ ЛОТЕРЕИ. О выплате денежных средств в виде выигрыша при осуществлении деятельности по проведению лотерей
+                    * `9` - ПРЕДОСТАВЛЕНИЕ РИД. О предоставлении прав на использование результатов интеллектуальной деятельности или средств индивидуализации.
+                    * `10` - ПЛАТЕЖ. Об авансе, задатке, предоплате, кредите, взносе в счет оплаты, пени, штрафе, вознаграждении, бонусе и ином аналогичном предмете расчета 
+                    * `11` - АГЕНТСКОЕ ВОЗНАГРАЖДЕНИЕ. О вознаграждении пользователя, являющегося платежным агентом (субагентом), банковским платежным агентом (субагентом), комиссионером, поверенным или иным агентом.
+                    * `12` - СОСТАВНОЙ ПРЕДМЕТ РАСЧЕТА. О предмете расчета, состоящем из предметов, каждому из которых может быть присвоено значение от 1 до 11. 
+                    * `13` - ИНОЙ ПРЕДМЕТ РАСЧЕТА. О предмете расчета, не относящемуся к предметам расчета, которым может быть присвоено значение от 1 до 12.
+                    * `14` - ИМУЩЕСТВЕННОЕ ПРАВО. О передаче имущественных прав. 
+                    * `15` - ВНЕРЕАЛИЗАЦИОННЫЙ ДОХОД. О внереализационном доходе.
+                    * `16` - СТРАХОВЫЕ ВЗНОСЫ. О суммах расходов, уменьшающих сумму налога (авансовых платежей) в соответствии с пунктом 3.1 статьи 346.21 Налогового кодекса Российской Федерации.
+                    * `17` - ТОРГОВЫЙ СБОР. О суммах уплаченного торгового сбора.
+                    * `18` - КУРОРТНЫЙ СБОР. О курортном сборе.
+                    * `19` - о залоге
+                    * `20` - о суммах произведенных расходов в соответствии со статьей 346.16 Налогового кодекса Российской Федерации, уменьшающих доход
+                    * `21` - о страховых взносах на обязательное пенсионное страхование, уплачиваемых ИП, не производящими выплаты и иные вознаграждения физическим лицам
+                    * `22` - о страховых взносах на обязательное пенсионное страхование, уплачиваемых организациями и ИП, производящими выплаты и иные вознаграждения физическим лицам
+                    * `23` - о страховых взносах на обязательное медицинское страхование, уплачиваемых ИП, не производящими выплаты и иные вознаграждения физическим лицам
+                    * `24` - о страховых взносах на обязательное медицинское страхование, уплачиваемые организациями и ИП, производящими выплаты и иные вознаграждения физическим лицам
+                    * `25` - о страховых взносах на обязательное социальное страхование на случай временной нетрудоспособности и в связи с материнством, на обязательное социальное страхование от несчастных случаев на производстве и профессиональных заболеваний
+                    * `26` - о приеме и выплате денежных средств при осуществлении казино и залами игровых автоматов расчетов с использованием обменных знаков игорного заведения
+                    * `27` - о выдаче денежных средств банковским платежным агентом
+                    * `30` - о реализуемом подакцизном товаре, подлежащем маркировке средством идентификации, не имеющем кода маркировки
+                    * `31` - о реализуемом подакцизном товаре, подлежащем маркировке средством идентификации, имеющем код маркировки
+                    * `32` - о реализуемом товаре, подлежащем маркировке средством идентификации, не имеющем кода маркировки, за исключением подакцизного товара
+                    * `33` - о реализуемом товаре, подлежащем маркировке средством идентификации, имеющем код маркировки, за исключением подакцизного товара
+                type: "integer"
+                enum:
+                  - 1
+                  - 2
+                  - 3
+                  - 4
+                  - 5
+                  - 6
+                  - 7
+                  - 9
+                  - 10
+                  - 11
+                  - 12
+                  - 13
+                  - 14
+                  - 15
+                  - 16
+                  - 17
+                  - 18
+                  - 19
+                  - 20
+                  - 21
+                  - 22
+                  - 23
+                  - 24
+                  - 25
+                  - 26
+                  - 27
+                  - 30
+                  - 31
+                  - 32
+                  - 33 
+              nds_value:
+                description: |
+                  Налоговая ставка НДС. (Тег 1199)
+                  Возможные значения:
+                  * `0` – НДС по ставке 0%;
+                  * `10` – НДС чека по ставке 10%;
+                  * `110` – НДС чека по расчетной ставке 10/110;
+                  * `20` – НДС чека по ставке 20%;
+                  * `120` – НДС чека по расчетной ставке 20/120.
+                type: "integer"
+                enum:
+                  - 0
+                  - 10
+                  - 20
+                  - 110
+                  - 120
+              nds_not_apply:
+                description: |
+                  для значения Без НДС (nds_not_apply: true),
+                  для оплат с НДС (nds_not_apply: false),
+                type: "boolean"
+                enum:
+                  - true
+                  - false
+              user_data:
+                description: "Дополнительный реквизит предмета расчета. (Тег 1191)"
+                type: "string"
+                format: "string"
+                maxLength: 64
+                example: "nngizxeipfzvsbuubtzghhosknuugijwxivttxapaoqlurdklmmkxtysvnsiawjk"
+              excise:
+                description: "Сумма акциза в рублях. (Тег 1229)"
+                type: "number"
+                format: "double"
+                maximum: 999999999.99
+                multipleOf: 0.01
+                example: 10
+              country_code:
+                description: "Цифровой код страны происхождения товара. (Тег 1230)"
+                type: "string"
+                format: "string3"
+                maxLength: 3
+                example: "123"
+              declaration_number:
+                description: "Номер таможенной декларации. (Тег 1231)"
+                type: "string"
+                maxLength: 32
+                example: "appywpyajxjggylxlomqjygvtxwjfbab"
+              mark_quantity:
+                description: "Дробное количество маркированного товара (Тег 1291)"
+                type: "object"
+                required: 
+                  - "numerator"
+                  - "denominator"
+                properties:
+                  numerator:
+                    description: "Числитель дробной части предмета расчета (Тег 1293)"
+                    type: "integer"
+                    format: "int64"
+                    example: 12
+                  denominator:
+                    description: "Знаменатель дробной части предмета расчета (Тег 1294)"
+                    type: "integer"
+                    format: "int64"
+                    example: 20
+              mark_processing_mode:
+                description: |
+                  Режим обработки кода маркировки (2102). 
+                  Должен принимать значение равное `0`"
+                type: "string"
+                enum:
+                - "0"
+              sectoral_item_props:
+                description: "Отраслевой реквизит предмета расчета (Тег 1260)"
+                type: "array"
+                items:
+                  type: "object"
+                  required:
+                    - "number"
+                    - "federal_id"
+                    - "value"
+                    - "date"
+                  properties:
+                    number:
+                      description: "Номер документа основания (Тег 1264)"
+                      type: "string"
+                      maxLength: 32
+                      example: "123456"
+                    federal_id:
+                      description: |
+                        Идентификатор ФОИВ. (Тег 1262)
+                        * `001` - Министерство внутренних дел Российской Федерации
+                        * `002` - Министерство Российской Федерации по делам гражданской оборон, чрезвычайным ситуациям и ликвидации последствий стихийных бедствий
+                        * `003` - Министерство иностранных дел Российской Федерации 
+                        * `004` - Федеральное агентство по делам Содружества Независимых Государств, соотечественников, проживающих за рубежом, и по международному гуманитарному сотрудничеству
+                        * `005` - Министерство обороны Российской Федерации
+                        * `006` - Федеральная служба по военно-техническому сотрудничеству
+                        * `007` - Федеральная служба по техническому и экспортному контролю
+                        * `008` - Министерство юстиции Российской Федерации
+                        * `009` - Федеральная служба исполнения наказаний
+                        * `010` - Федеральная служба судебных приставов
+                        * `011` - Государственная фельдъегерская служба Российской Федерации (федеральная служба)
+                        * `012` - Служба внешней разведки Российской Федерации (федеральная служба)
+                        * `013` - Федеральная служба безопасности Российской Федерации(федеральная служба)
+                        * `014` - Федеральная служба войск национальной гвардии РоссийскойФедерации (федеральная служба)
+                        * `015` - Федеральная служба охраны Российской Федерации (федеральная служба)
+                        * `016` - Федеральная служба по финансовому мониторингу (федеральная служба)
+                        * `017` - Федеральное архивное агентство (федеральное агентство)
+                        * `018` - Главное управление специальных программ Президента Российской Федерации (федеральное агентство)
+                        * `019` - Управление делами Президента Российской Федерации (федеральное агентство)
+                        * `020` - Министерство здравоохранения Российской Федерации
+                        * `021` - Федеральная служба по надзору в сфере здравоохранения 
+                        * `022` - Министерство культуры Российской Федерации
+                        * `023` - Министерство науки и высшего образования Российской Федерации
+                        * `024` - Министерство природных ресурсов и экологии Российской Федерации
+                        * `025` - Федеральная служба по гидрометеорологии и мониторингу окружающей среды
+                        * `026` - Федеральная служба по надзору в сфере природопользования
+                        * `027` - Федеральное агентство водных ресурсов
+                        * `028` - Федеральное агентство лесного хозяйства
+                        * `029` - Федеральное агентство по недропользованию
+                        * `030` - Министерство промышленности и торговли Российской Федерации
+                        * `031` - Федеральное агентство по техническому регулированию и метрологии
+                        * `032` - Министерство просвещения Российской Федерации
+                        * `033` - Министерство Российской Федерации по развитию Дальнего Востока и Арктики
+                        * `034` - Министерство сельского хозяйства Российской Федерации
+                        * `035` - Федеральная служба по ветеринарному и фитосанитарному надзору
+                        * `036` - Федеральное агентство по рыболовству
+                        * `037` - Министерство спорта Российской Федерации
+                        * `038` - Министерство строительства и жилищно-коммунального хозяйства Российской Федерации
+                        * `039` - Министерство транспорта Российской Федерации
+                        * `040` - Федеральная служба по надзору в сфере транспорта 
+                        * `041` - Федеральное агентство воздушного транспорта 
+                        * `042` - Федеральное дорожное агентство
+                        * `043` - Федеральное агентство железнодорожного транспорта
+                        * `044` - Федеральное агентство морского и речного транспорта 
+                        * `045` - Министерство труда и социальной защиты Российской Федерации
+                        * `046` - Федеральная служба по труду и занятости 
+                        * `047` - Министерство финансов Российской Федерации
+                        * `048` - Федеральная налоговая служба
+                        * `049` - Федеральная пробирная палата (федеральная служба)
+                        * `050` - Федеральная служба по регулированию алкогольного рынка
+                        * `051` - Федеральная таможенная служба 
+                        * `052` - Федеральное казначейство (федеральная служба)
+                        * `053` - Федеральное агентство по управлению государственным имуществом
+                        * `054` - Министерство цифрового развития, связи и массовых коммуникаций Российской Федерации
+                        * `055` - Федеральная служба по надзору в сфере связи, информационных технологий и массовых коммуникаций
+                        * `056` - Федеральное агентство по печати и массовым коммуникациям 
+                        * `057` - Федеральное агентство связи
+                        * `058` - Министерство экономического развития Российской Федерации
+                        * `059` - Федеральная служба по аккредитации
+                        * `060` - Федеральная служба государственной статистики
+                        * `061` - Федеральная служба по интеллектуальной собственности
+                        * `062` - Федеральное агентство по туризму
+                        * `063` - Министерство энергетики Российской Федерации
+                        * `064` - Федеральная антимонопольная служба
+                        * `065` - Федеральная служба государственной регистрации, кадастра и картографии
+                        * `066` - Федеральная служба по надзору в сфере защиты прав потребителей и благополучия человека
+                        * `067` - Федеральная служба по надзору в сфере образования и науки
+                        * `068` - Федеральная служба по экологическому, технологическому и атомному надзору
+                        * `069` - Федеральное агентство по государственным резервам
+                        * `070` - Федеральное медико-биологическое агентство
+                        * `071` - Федеральное агентство по делам молодежи
+                        * `072` - Федеральное агентство по делам национальностей
+                      type: "string"
+                      enum:
+                        - "001"
+                        - "002"
+                        - "003"
+                        - "004"
+                        - "005" 
+                        - "007"
+                        - "008"
+                        - "009"
+                        - "010"
+                        - "011"
+                        - "012"
+                        - "013"
+                        - "014"
+                        - "015"
+                        - "016"
+                        - "017"
+                        - "018"
+                        - "019"
+                        - "020"
+                        - "021"
+                        - "022"
+                        - "023"
+                        - "024"
+                        - "025"
+                        - "026"
+                        - "027"
+                        - "028"
+                        - "029"
+                        - "030"
+                        - "031"
+                        - "032"
+                        - "033" 
+                        - "034"
+                        - "035"
+                        - "036"
+                        - "037"
+                        - "038"
+                        - "039"
+                        - "040"
+                        - "041"
+                        - "042"
+                        - "043"
+                        - "044"
+                        - "045"
+                        - "046"
+                        - "047"
+                        - "048"
+                        - "049"
+                        - "050"
+                        - "051"
+                        - "052"
+                        - "053"
+                        - "054"
+                        - "055"
+                        - "056"
+                        - "057"
+                        - "058"
+                        - "059"
+                        - "060"
+                        - "061"
+                        - "062"
+                        - "063"
+                        - "064"
+                        - "065"
+                        - "066"
+                        - "067"
+                        - "068"
+                        - "069"
+                        - "070"
+                        - "071"
+                        - "072"
+                    value:
+                      description: "Значение отраслевого реквизита (Тег 1265)"
+                      type: "string"
+                      maxLength: 256
+                      example: "123456"
+                    date:
+                      description: "Дата документа основания (Тег 1263). Значение в формате в формате ёДД.ММ.ГГГГё"
+                      minLength: 10
+                      type: "string"
+                      format: "date"
+                      example: "11.02.2022"
+              mark_code:
+                type: "object"
+                description: "Код товара (Тег 1163)"
+                properties:
+                  unknown:
+                    description: "Код товара, формат которого не идентифицирован, как один из реквизитов."
+                    type: "string"
+                    maxLength: 32
+                  ean8:
+                    description: "Код товара в формате EAN-8 (Тег 1301)"
+                    type: "string"
+                    maxLength: 8
+                  ean13:
+                    description: "Код товара в формате EAN-13 (Тег 1302)"
+                    type: "string"
+                    maxLength: 13
+                  itf14:
+                    description: "Код товара в формате ITF-14 (Тег 1303)"
+                    type: "string"
+                    maxLength: 14
+                  gs1m:
+                    description: |
+                      Код товара в формате GS1, нанесенный на товар, подлежащий (не подлежащий) маркировке средствами идентификации. (Тег 1304)
+                      
+                      Примечание: Код товара необходимо передавать целиком. В связи с тем, что в коде товара могут быть непечатные символы, необходимо перед отправкой кодировать строку с кодом товара в Base64.
+                      
+                    type: "string"
+                    format: "base64"
+                    maxLength: 256
+                  short:
+                    description: "Код товара в формате короткого кода маркировки, нанесенный на товар, подлежащий маркировке средствами идентификации (Тег 1306)"
+                    type: "string"
+                    maxLength: 38
+                  fur:
+                    description: "Контрольно-идентификационный знак мехового изделия. Ровно 20 символов, должно соответствовать маске СС-ЦЦЦЦЦЦ-СССССССССС (Тег 1307)"
+                    type: "string"
+                    maxLength: 20
+                  egais20:
+                    description: "Код товара в формате ЕГАИС-2.0 (Тег 1308)"
+                    type: "string"
+                    maxLength: 33
+                  egais30:
+                    description: "Код товара в формате ЕГАИС-3.0 (Тег 1309)"
+                    type: "string"
+                    maxLength: 14
+                default: 
+                  gs1m: "MDEwNDYwNzQyODY3OTA5MDIxNmVKSWpvV0g1NERkVSA5MWZmZDAgOTJzejZrU1BpckFwZk1CZnR2TGJvRTFkbFdDLzU4aEV4UVVxdjdCQmtabWs0PQ=="
+              agent_info:
+                description: "Атрибуты агента."
+                type: "object"
+                required: 
+                  - "type"
+                  - "supplier_phone"
+                properties:
+                  type:
+                    description: |
+                      Признак агента по предмету расчёта. (Тег 1222)
+                      Возможные значенния:
+                      * `1` – банковский платежный агент. Оказание услуг
+                      покупателю (клиенту) пользователем, являющимся банковским платежным
+                      агентом.
+                      * `2` – банковский платежный субагент. Оказание
+                      услуг покупателю (клиенту) пользователем, являющимся банковским
+                      платежным субагентом.
+                      * `4` – платежный агент. Оказание услуг покупателю (клиенту)
+                      пользователем, являющимся платежным агентом.
+                      * `8` – платежный субагент. Оказание услуг покупателю
+                      (клиенту) пользователем, являющимся платежным субагентом.
+                      * `16` – поверенный. Осуществление расчета с покупателем
+                      (клиентом) пользователем, являющимся поверенным.
+                      * `32` – комиссионер. Осуществление расчета с
+                      покупателем (клиентом) пользователем, являющимся комиссионером.
+                      * `64` – другой тип агента. Осуществление расчета с покупателем
+                      (клиентом) пользователем, являющимся агентом и не являющимся
+                      банковским платежным агентом (субагентом), платежным агентом
+                      (субагентом), поверенным, комиссионером.
+                    type: "integer"
+                    enum:
+                      - 1
+                      - 2
+                      - 4
+                      - 8
+                      - 16
+                      - 32
+                      - 64
+                  transfer_operator_phone:
+                    type: "array"
+                    items:
+                      type: "string"
+                      description: "Номера телефонов оператора по переводу денежных средств (Тег 1075)"
+                      maxLength: 19
+                      example: "+71111111111"
+                  transfer_operator_name:
+                    description: "Наименование оператора перевода. (Тег 1026)"
+                    type: "string"
+                    maxLength: 64
+                    example: "Наименование оператора перевода."
+                  transfer_operator_address:
+                    description: "Адрес оператора перевода. (Тег 1005)"
+                    type: "string"
+                    maxLength: 256
+                    example: "Место нахождения оператора по переводу денежных средств"
+                  transfer_operator_inn:
+                    description: "ИНН оператора перевода (Тег 1016)"
+                    type: "string"
+                    minLength: 10
+                    maxLength: 12
+                    example: "5740673712"
+                  payment_operator_operation:
+                    description: "Наименование операции банковского платежного агента, банковского платежного субагента. (Тег 1044)"
+                    type: "string"
+                    maxLength: 24
+                    example: "Перевод д/с"
+                  payment_operator_phone:
+                    type: "array"
+                    items:
+                      type: "string"
+                      description: "Номера телефонов платежного агента, платежного субагента, банковского платежного агента, банковского платежного субагента (Тег 1073)"
+                      maxLength: 19
+                      example: "+71111111111"
+                  receive_operator_phone:
+                    type: "array"
+                    items:
+                      type: "string"
+                      description: "Номера контактных телефонов оператора по приему платежей (Тег 1074)"
+                      maxLength: 19
+                      example: "+71111111111"
+                  supplier_phone:
+                    type: "array"
+                    items:
+                      type: "string"
+                      description: "Телефоны поставщика. (Тег 1171)"
+                      maxLength: 19
+                      example: "+71111111111"
+                  supplier_name:
+                    description: "Наименование поставщика. (Тег 1225)"
+                    type: "string"
+                    maxLength: 256
+                    example: "Наименование поставщика."
+                  supplier_inn:
+                    description: "ИНН поставщика (Тег 1226)"
+                    type: "string"
+                    minLength: 10
+                    maxLength: 12
+                    example: "5740673712" 
+        author:
+          description: "ФИО кассира (Тег 1021)"
+          type: "string"
+          maxLength: 64
+          example: "Кассир"
+        company:
+          description: "Реквизиты компании"
+          type: "object"
+          properties:
+            inn:
+              description: "ИНН компании"
+              type: "string"
+              minLength: 10
+              maxLength: 12
+              example: "253505979172"
+            payment_address:
+              description: "Адрес сайта компании"
+              type: "string"
+              maxLength: 256
+              example: "shop-url.ru"
+            location:
+              description: "Адрес компании"
+              type: "string"
+              maxLength: 256
+              example: "г. Уфа, ул. Пушкина, д. 1"
+        tag1055:
+          description: |
+            Система налогообложения
+            * `1` - общая СН
+            * `2` – упрощенная СН (доходы);
+            * `4` – упрощенная СН (доходы минус расходы);
+            * `8` – единый налог на вмененный доход;
+            * `16` – единый сельскохозяйственный налог;
+            * `32` – патентная СН.
+          type: "integer"
+          enum: 
+            - 1
+            - 2
+            - 4
+            - 8
+            - 16
+            - 32
+          example: 1
+        client_name:
+          description: "Наименование покупателя (Тег 1227)"
+          type: "string"
+          maxLength: 256
+          example: "Иванов Иван Иванович"
+        client_inn:
+          description: "ИНН покупателя (Тег 1228)"
+          type: "string"
+          minLength: 10
+          maxLength: 12
+          example: "5740673712"
+        client_birthdate:
+          description: "Дата рождения покупателя (клиента) в формате ДД.ММ.ГГГГ (ровно 10 символов) (Тег 1243)"
+          minLength: 10
+          type: "string"
+          example: "30.12.1990"
+        client_citizenship:
+          description: "Числовой код страны, гражданином которой является покупатель (клиент). Код страны указывается в соответствии с Общероссийским классификатором стран мира ОКСМ. Ровно 3 цифры (Тег 1244)"
+          maxLength: 3
+          type: "string"
+          format: "string"
+          example: "123"
+        client_document_code:
+          description:  | 
+            Числовой код вида документа, удостоверяющего личность (Тег 1245). 
+            Может принимать только значения из справочника. Ровно 2 цифры
+              * `21` - Паспорт гражданина Российской Федерации
+              * `22` - Паспорт гражданина Российской Федерации, дипломатический паспорт, служебный паспорт, удостоверяющие личность гражданина Российской Федерации за пределами Российской Федерации
+              * `26` - Временное удостоверение личности гражданина Российской Федерации, выдаваемое на период оформления паспорта гражданина Российской Федерации
+              * `27` - Свидетельство о рождении гражданина Российской Федерации (для граждан Российской Федерации в возрасте до 14 лет)
+              * `28` - Иные документы, признаваемые документами, удостоверяющими личность гражданина Российской Федерации в соответствии с законодательством Российской Федерации Документы, удостоверяющие личность иностранных граждан или лиц без гражданства
+              * `31` - Паспорт иностранного гражданина
+              * `32` - Иные документы, признаваемые документами, удостоверяющими личность иностранного гражданина в соответствии с законодательством Российской Федерации и международным договором Российской Федерации
+              * `33` - Документ, выданный иностранным государством и признаваемый в соответствии с международным договором Российской Федерации в качестве документа, удостоверяющего личность лица без гражданства.
+              * `34` - Вид на жительство (для лиц без гражданства)
+              * `35` - Разрешение на временное проживание (для лиц без гражданства)
+              * `36` - Свидетельство о рассмотрении ходатайства о признании лица без гражданства беженцем на территории Российской Федерации по существу
+              * `37` - Удостоверение беженца
+              * `38` - Иные документы, признаваемые документами, удостоверяющими личность лиц без гражданства в соответствии с законодательством Российской Федерации и международным договором Российской Федерации
+              * `40` - Документ, удостоверяющий личность лица, не имеющего действительного документа, удостоверяющего личность, на период рассмотрения заявления о признании гражданином Российской Федерации или о приеме в гражданство Российской Федерации
+          minLength: 2
+          type: "string"
+          enum: 
+            - "21"
+            - "22"
+            - "26"
+            - "27"
+            - "28"
+            - "31"
+            - "32"
+            - "33"
+            - "34"
+            - "35"
+            - "36"
+            - "37"
+            - "38"
+            - "40"
+          example: "21"
+        client_document_data:
+          description: "Реквизиты документа, удостоверяющего личность (Тег 1246)"
+          type: "string"
+          maxLength: 64
+          example: "4507 443564"
+        client_address:
+          description: "Адрес покупателя (клиента), грузополучателя (Тег 1254)"
+          type: "string"
+          maxLength: 256
+          example: "г. Уфа, ул. Пушкина, д. 1"
+        smsEmail54FZ:
+          description: "Электронный адрес покупателя или телефон покупателя (Тег 1008)"
+          type: "string"
+          maxLength: 64
+          example: "test@test.ru"
+        payed_cash:
+          description: "Сумма оплаты наличными"
+          type: "number"
+          format: "double"
+          multipleOf: 0.01
+          example: 0
+        payed_cashless:
+          description: "Сумма оплаты безналичными"
+          type: "number"
+          format: "double"
+          multipleOf: 0.01
+          example: 10
+        payed_credit:
+          description: "Сумма оплаты последующей оплаты кредитом"
+          type: "number"
+          format: "double"
+          multipleOf: 0.01
+          example: 0
+        payed_consideration:
+          description: "Сумма по чеку встречным предоставлением"
+          type: "number"
+          format: "double"
+          multipleOf: 0.01
+          example: 0
+        payed_prepay:
+          description: "Сумма оплаты предоплатой(аванс)"
+          type: "number"
+          format: "double"
+          multipleOf: 0.01
+          example: 0
+        additional_user_props:
+          description: "Дополнительный реквизит пользователя (Тег 1084)"
+          type: "object"
+          required:
+            - "name"
+            - "value"
+          properties:
+            name:
+              description: "Наименование дополнительного реквизита пользователя (Тег 1085)"
+              type: "string"
+              maxLength: 64
+              example: "mdlp3108805"
+            value:
+              description: "Значение дополнительного реквизита пользователя. (Тег 1086)"
+              type: "string"
+              maxLength: 256
+              example: "ps45102&dnАБV492&&781&dd181110&sid71752852194630&"
+        cashier_inn:
+          description: "ИНН кассира (Тег 1203)"
+          type: "string"
+          minLength: 12
+          example: "887405485310"
+        callback_url:
+          type: "string"
+          maxLength: 256
+          example: "https://385aebd79436e9f44f1e135ebd64b39c.m.pipedream.net"
+        operating_check_props:
+          description: "Операционный реквизит чека (Тег 1270)"
+          type: "object"
+          required:
+            - "name"
+            - "value"
+            - "timestamp"
+          properties:
+            name:
+              description: "Идентификатор операции (Тег 1271)"
+              type: "string"
+              enum: 
+              - "0"
+              example: "0"
+            value:
+              description: "Данные операции (Тег 1272)"
+              type: "string"
+              maxLength: 64
+              example: "ps45102&dnАБV492&&781&dd181110&sid71752852194630&"
+            timestamp:
+              description: "Дата и время операции в формате: «dd.mm.yyyy HH:MM:SS» (Тег 1273)"
+              type: "string"
+              format: "date-time"
+              maxLength: 64
+              example: "14.02.2022 04:51:04"
+        sectoral_check_props:
+          description: "Отраслевой реквизит чека (Тег 1261)"
+          type: "array"
+          items:
+            type: "object"
+            required:
+              - "number"
+              - "federal_id"
+              - "value"
+              - "date"
+            properties:
+              number:
+                description: "Номер нормативного акта федерального органа исполнительной власти, регламентирующего порядок заполнения реквизита `значение отраслевого реквизита` (Тег 1264)"
+                type: "string"
+                maxLength: 32
+                example: "123456"
+              federal_id:
+                description: |
+                  Идентификатор ФОИВ (Тег 1262).
+                  * `001` - Министерство внутренних дел Российской Федерации
+                  * `002` - Министерство Российской Федерации по делам гражданской оборон, чрезвычайным ситуациям и ликвидации последствий стихийных бедствий
+                  * `003` - Министерство иностранных дел Российской Федерации 
+                  * `004` - Федеральное агентство по делам Содружества Независимых Государств, соотечественников, проживающих за рубежом, и по международному гуманитарному сотрудничеству
+                  * `005` - Министерство обороны Российской Федерации
+                  * `006` - Федеральная служба по военно-техническому сотрудничеству
+                  * `007` - Федеральная служба по техническому и экспортному контролю
+                  * `008` - Министерство юстиции Российской Федерации
+                  * `009` - Федеральная служба исполнения наказаний
+                  * `010` - Федеральная служба судебных приставов
+                  * `011` - Государственная фельдъегерская служба Российской Федерации (федеральная служба)
+                  * `012` - Служба внешней разведки Российской Федерации (федеральная служба)
+                  * `013` - Федеральная служба безопасности Российской Федерации(федеральная служба)
+                  * `014` - Федеральная служба войск национальной гвардии РоссийскойФедерации (федеральная служба)
+                  * `015` - Федеральная служба охраны Российской Федерации (федеральная служба)
+                  * `016` - Федеральная служба по финансовому мониторингу (федеральная служба)
+                  * `017` - Федеральное архивное агентство (федеральное агентство)
+                  * `018` - Главное управление специальных программ Президента Российской Федерации (федеральное агентство)
+                  * `019` - Управление делами Президента Российской Федерации (федеральное агентство)
+                  * `020` - Министерство здравоохранения Российской Федерации
+                  * `021` - Федеральная служба по надзору в сфере здравоохранения 
+                  * `022` - Министерство культуры Российской Федерации
+                  * `023` - Министерство науки и высшего образования Российской Федерации
+                  * `024` - Министерство природных ресурсов и экологии Российской Федерации
+                  * `025` - Федеральная служба по гидрометеорологии и мониторингу окружающей среды
+                  * `026` - Федеральная служба по надзору в сфере природопользования
+                  * `027` - Федеральное агентство водных ресурсов
+                  * `028` - Федеральное агентство лесного хозяйства
+                  * `029` - Федеральное агентство по недропользованию
+                  * `030` - Министерство промышленности и торговли Российской Федерации
+                  * `031` - Федеральное агентство по техническому регулированию и метрологии
+                  * `032` - Министерство просвещения Российской Федерации
+                  * `033` - Министерство Российской Федерации по развитию Дальнего Востока и Арктики
+                  * `034` - Министерство сельского хозяйства Российской Федерации
+                  * `035` - Федеральная служба по ветеринарному и фитосанитарному надзору
+                  * `036` - Федеральное агентство по рыболовству
+                  * `037` - Министерство спорта Российской Федерации
+                  * `038` - Министерство строительства и жилищно-коммунального хозяйства Российской Федерации
+                  * `039` - Министерство транспорта Российской Федерации
+                  * `040` - Федеральная служба по надзору в сфере транспорта 
+                  * `041` - Федеральное агентство воздушного транспорта 
+                  * `042` - Федеральное дорожное агентство
+                  * `043` - Федеральное агентство железнодорожного транспорта
+                  * `044` - Федеральное агентство морского и речного транспорта 
+                  * `045` - Министерство труда и социальной защиты Российской Федерации
+                  * `046` - Федеральная служба по труду и занятости 
+                  * `047` - Министерство финансов Российской Федерации
+                  * `048` - Федеральная налоговая служба
+                  * `049` - Федеральная пробирная палата (федеральная служба)
+                  * `050` - Федеральная служба по регулированию алкогольного рынка
+                  * `051` - Федеральная таможенная служба 
+                  * `052` - Федеральное казначейство (федеральная служба)
+                  * `053` - Федеральное агентство по управлению государственным имуществом
+                  * `054` - Министерство цифрового развития, связи и массовых коммуникаций Российской Федерации
+                  * `055` - Федеральная служба по надзору в сфере связи, информационных технологий и массовых коммуникаций
+                  * `056` - Федеральное агентство по печати и массовым коммуникациям 
+                  * `057` - Федеральное агентство связи
+                  * `058` - Министерство экономического развития Российской Федерации
+                  * `059` - Федеральная служба по аккредитации
+                  * `060` - Федеральная служба государственной статистики
+                  * `061` - Федеральная служба по интеллектуальной собственности
+                  * `062` - Федеральное агентство по туризму
+                  * `063` - Министерство энергетики Российской Федерации
+                  * `064` - Федеральная антимонопольная служба
+                  * `065` - Федеральная служба государственной регистрации, кадастра и картографии
+                  * `066` - Федеральная служба по надзору в сфере защиты прав потребителей и благополучия человека
+                  * `067` - Федеральная служба по надзору в сфере образования и науки
+                  * `068` - Федеральная служба по экологическому, технологическому и атомному надзору
+                  * `069` - Федеральное агентство по государственным резервам
+                  * `070` - Федеральное медико-биологическое агентство
+                  * `071` - Федеральное агентство по делам молодежи
+                  * `072` - Федеральное агентство по делам национальностей
+                type: "string"
+                enum:
+                  - "001"
+                  - "002"
+                  - "003"
+                  - "004"
+                  - "005" 
+                  - "007"
+                  - "008"
+                  - "009"
+                  - "010"
+                  - "011"
+                  - "012"
+                  - "013"
+                  - "014"
+                  - "015"
+                  - "016"
+                  - "017"
+                  - "018"
+                  - "019"
+                  - "020"
+                  - "021"
+                  - "022"
+                  - "023"
+                  - "024"
+                  - "025"
+                  - "026"
+                  - "027"
+                  - "028"
+                  - "029"
+                  - "030"
+                  - "031"
+                  - "032"
+                  - "033" 
+                  - "034"
+                  - "035"
+                  - "036"
+                  - "037"
+                  - "038"
+                  - "039"
+                  - "040"
+                  - "041"
+                  - "042"
+                  - "043"
+                  - "044"
+                  - "045"
+                  - "046"
+                  - "047"
+                  - "048"
+                  - "049"
+                  - "050"
+                  - "051"
+                  - "052"
+                  - "053"
+                  - "054"
+                  - "055"
+                  - "056"
+                  - "057"
+                  - "058"
+                  - "059"
+                  - "060"
+                  - "061"
+                  - "062"
+                  - "063"
+                  - "064"
+                  - "065"
+                  - "066"
+                  - "067"
+                  - "068"
+                  - "069"
+                  - "070"
+                  - "071"
+                  - "072"
+              value:
+                description: "Состав значений, определенных нормативного актом федерального органа исполнительной власти (Тег 1265)"
+                type: "string"
+                maxLength: 256
+                example: "123456"
+              date:
+                description: "Дата нормативного акта федерального органа исполнительной власти, регламентирующего порядок заполнения реквизита `значение отраслевого реквизита` (Тег 1263)"
+                minLength: 10
+                type: "string"
+                format: "date"
+                example: "11.02.2022"
+        additional_check_props:
+          description: "Дополнительный реквизит чека (Тег 1192)"
+          type: "string"
+          maxLength: 16
+          example: "445334544"
+        trade_acquiring:
+          description: "Торговый эквайринг"
+          type: "object"
+          required:
+            - "type_operation"
+          properties:
+            type_operation:
+              description: > 
+                  Тип операции
+                    * `1` – приход
+                    * `2` – возврат
+                    * `3` – отмена (в течении операционного дня)
+              type: "integer"
+              enum:
+                - 1
+                - 2
+                - 3
+            command_id_coming:
+              description: "Идентификатор приходной операции"
+              type: "integer"
+              example: 441027
+        device_number:
+          description: "Номер автомата (Тег 1036)"
+          type: "string"
+          maxLength: 20
+          example: "0"
+    JSON_shift:
+      type: "object"
+      required:
+      - "author"
+      properties:
+        author:
+          description: "ФИО кассира"
+          type: "string"
+          example: "Иванов И.И"
+          
+          
+    JSON_cash:
+      type: "object"
+      required:
+      - "author"
+      - "description"
+      - "sum"
+      properties:
+        author:
+          description: "ФИО кассира"
+          type: "string"
+          example: "Иванов И.И"
+        description:
+          description: "Описание"
+          type: "string"
+          example: "Внесение денег в кассу"
+        sum:
+          description: "Сумма внесения / изъятия денег из кассы"
+          type: "integer"
+          example: "10"
+          
+    JSON_report:
+      type: "object"
+      required:
+      - "author"
+      - "report_type"
+      properties:
+        report_type:
+          description: |
+            Тип Отчета. Возможные значение:
+            * `true` - Z - Отчет
+            * `false` - X - Отчет
+          type: "boolean"
+          example: true
+        author:
+          description: "ФИО кассира"
+          type: "string"
+          example: "Иванов И.И"
+      
+    JSON_correction:
+      type: "object"
+      required:
+        - "c_num"
+        - "correction_info"
+        - "goods"
+        - "author"
+        - "payed_cash"
+        - "payed_cashless"
+        - "payed_credit"
+        - "payed_prepay"
+        - "payed_consideration"
+        - "tag1055"
+      properties:
+        c_num:
+          description: "Уникальный номер документа из системы"
+          type: "string"
+          maxLength: 128
+          example: "1603108283590"
+        correction_info:
+          type: "object"
+          required:
+          - "base_date"
+          properties:
+            type:
+              description: |
+                Тип коррекции. Возможные значения:
+                * `1` - Самостоятельно
+                * `2` - По предписанию
+              type: "integer"
+              enum:
+              - 1
+              - 2
+            base_date:
+              description: "Дата совершения коррекции"
+              maxLength: 10
+              type: "string"
+              format: "date"
+              example: "31.12.2022"
+            base_number:
+              description: "Номер предписания налогового органа"
+              maxLength: 32
+              type: "string"
+              example: "Коррекция чека №12345"
+        goods:
+          type: "array"
+          minItems: 1
+          maxItems: 100
+          items:
+            type: "object"
+            required:
+            - "price"
+            - "count"
+            - "sum"
+            - "measure"
+            - "payment_mode"
+            - "item_type"
+            - "nds_value"
+            - "nds_not_apply"
+            properties:
+              name:
+                description: "Наименование товара, работы, услуги, платежа, выплаты, иного предмета расчета. (Тег 1030)"
+                type: "string"
+                example: "Услуги доставки"
+              price:
+                description: "Цена за единицу товара, работы, услуги, платежа, выплаты, иного предмета расчета с учетом скидок и наценок (Тег 1079)"
+                type: "number"
+                format: "double"
+                maximum: 999999999.99
+                multipleOf: 0.01
+                example: 10
+              count:
+                description: "Количество/вес. В случае, если предметом расчета является товар, подлежащий обязательной маркировке средством идентификации (передан mark_code), параметр должен принимать значение, равное `1`. (Тег 1023)"
+                type: "number"
+                format: "double"
+                maximum: 99999.999
+                multipleOf: 0.01
+                example: 1
+              sum:
+                description: "Сумма в рублях. Значение реквизита `стоимость предмета расчета с учетом скидок и наценок` должно быть равно произведению значения реквизита `цена за единицу предмета расчета с учетом скидок и наценок`, умноженному на значение реквизита `количество предмета расчета`. (Тег 1043)"
+                type: "number"
+                format: "double"
+                maximum: 999999999.99
+                multipleOf: 0.01
+                example: 10
+              measure:
+                description: |
+                  Единицы измерения количества предмета расчета. (Тег 2108)
+                  Может принимать одно из значений:
+                  * `0` - Применяется для предметов расчета, которые могут быть реализованы поштучно или единицами (а также в случае, если предметом расчета является товар, подлежащий обязательной маркировке средством идентификации (передан mark_code))
+                  * `10` - Грамм
+                  * `11` - Килограмм
+                  * `12` - Тонна
+                  * `20` - Сантиметр
+                  * `21` - Дециметр
+                  * `22` - Метр
+                  * `30` - Квадратный сантиметр
+                  * `31` - Квадратный дециметр
+                  * `32` - Квадратный метр
+                  * `40` - Миллилитр
+                  * `41` - Литр
+                  * `42` - Кубический метр
+                  * `50` - Киловатт час
+                  * `51` - Гигакалория
+                  * `70` - Сутки (день)
+                  * `71` - Час
+                  * `72` - Минута
+                  * `73` - Секунда
+                  * `80` - Килобайт
+                  * `81` - Мегабайт
+                  * `82` - Гигабайт
+                  * `83` - Терабайт
+                  * `255` - Применяется при использовании иных единиц измерения
+                type: "number"
+                enum: 
+                  - 0
+                  - 10
+                  - 11
+                  - 12
+                example: 0
+              payment_mode:
+                description: |
+                  Признак способа расчёта. (Тег 1214)
+                  Возможные значения:
+                  * `1` - Предоплата 100%.
+                  Полная предварительная оплата до момента передачи предмета расчета. 
+                  * `2` - Предоплата. Частичная предварительная оплата до момента передачи предмета расчета.
+                  * `3` - Аванс.
+                  * `4` - Полный расчет. Полная оплата, в том числе с учетом аванса в момент передачи предмета расчета.
+                  * `5` - Частичный расчет и кредит. Частичная оплата предмета расчета в момент его передачи с последующей оплатой в кредит.
+                  * `6` - Передача в кредит. Передача предмета расчета без его оплаты в момент его передачи с последующей оплатой в кредит.
+                  * `7` - Оплата кредита. Оплата предмета расчета после его передачи с оплатой в кредит (оплата кредита).
+                type: "number"
+                enum:
+                  - 1
+                  - 2
+                  - 3
+                  - 4
+                  - 5
+                  - 6
+                  - 7
+              item_type:
+                description: |
+                  Признак предмета расчёта (Тег 1212) (1-27 и 30-33) 
+                    * `1` - ТОВАР. О реализуемом товаре, за исключением подакцизного товара (наименование и иные сведения, описывающие товар).
+                    * `2` - ПОДАКЦИЗНЫЙ ТОВАР. О реализуемом подакцизном товаре (наименование и иные сведения, описывающие товар). 
+                    * `3` - РАБОТА. О выполняемой работе (наименование и иные сведения, описывающие работу). 
+                    * `4` - УСЛУГА. Об оказываемой услуге (наименование и иные сведения, описывающие услугу).
+                    * `5` - СТАВКА АЗАРТНОЙ ИГРЫ или СТАВКА ИГРЫ. О приеме ставок при осуществлении деятельности по проведению азартных игр.
+                    * `6` - ВЫИГРЫШ АЗАРТНОЙ ИГРЫ. О выплате денежных средств в виде выигрыша при осуществлении деятельности по проведению азартных игр
+                    * `7` - ЛОТЕРЕЙНЫЙ БИЛЕТ или СТАВКА ЛОТЕРЕИ. О приеме денежных средств при реализации лотерейных билетов, электронных лотерейных билетов, приеме лотерейных ставок при осуществлении деятельности по проведению лотерей
+                    * `8` - ВЫИГРЫШ ЛОТЕРЕИ. О выплате денежных средств в виде выигрыша при осуществлении деятельности по проведению лотерей
+                    * `9` - ПРЕДОСТАВЛЕНИЕ РИД. О предоставлении прав на использование результатов интеллектуальной деятельности или средств индивидуализации.
+                    * `10` - ПЛАТЕЖ. Об авансе, задатке, предоплате, кредите, взносе в счет оплаты, пени, штрафе, вознаграждении, бонусе и ином аналогичном предмете расчета 
+                    * `11` - АГЕНТСКОЕ ВОЗНАГРАЖДЕНИЕ. О вознаграждении пользователя, являющегося платежным агентом (субагентом), банковским платежным агентом (субагентом), комиссионером, поверенным или иным агентом.
+                    * `12` - СОСТАВНОЙ ПРЕДМЕТ РАСЧЕТА. О предмете расчета, состоящем из предметов, каждому из которых может быть присвоено значение от 1 до 11. 
+                    * `13` - ИНОЙ ПРЕДМЕТ РАСЧЕТА. О предмете расчета, не относящемуся к предметам расчета, которым может быть присвоено значение от 1 до 12.
+                    * `14` - ИМУЩЕСТВЕННОЕ ПРАВО. О передаче имущественных прав. 
+                    * `15` - ВНЕРЕАЛИЗАЦИОННЫЙ ДОХОД. О внереализационном доходе.
+                    * `16` - СТРАХОВЫЕ ВЗНОСЫ. О суммах расходов, уменьшающих сумму налога (авансовых платежей) в соответствии с пунктом 3.1 статьи 346.21 Налогового кодекса Российской Федерации.
+                    * `17` - ТОРГОВЫЙ СБОР. О суммах уплаченного торгового сбора.
+                    * `18` - КУРОРТНЫЙ СБОР. О курортном сборе.
+                    * `19` - о залоге
+                    * `20` - о суммах произведенных расходов в соответствии со статьей 346.16 Налогового кодекса Российской Федерации, уменьшающих доход
+                    * `21` - о страховых взносах на обязательное пенсионное страхование, уплачиваемых ИП, не производящими выплаты и иные вознаграждения физическим лицам
+                    * `22` - о страховых взносах на обязательное пенсионное страхование, уплачиваемых организациями и ИП, производящими выплаты и иные вознаграждения физическим лицам
+                    * `23` - о страховых взносах на обязательное медицинское страхование, уплачиваемых ИП, не производящими выплаты и иные вознаграждения физическим лицам
+                    * `24` - о страховых взносах на обязательное медицинское страхование, уплачиваемые организациями и ИП, производящими выплаты и иные вознаграждения физическим лицам
+                    * `25` - о страховых взносах на обязательное социальное страхование на случай временной нетрудоспособности и в связи с материнством, на обязательное социальное страхование от несчастных случаев на производстве и профессиональных заболеваний
+                    * `26` - о приеме и выплате денежных средств при осуществлении казино и залами игровых автоматов расчетов с использованием обменных знаков игорного заведения
+                    * `27` - о выдаче денежных средств банковским платежным агентом
+                    * `30` - о реализуемом подакцизном товаре, подлежащем маркировке средством идентификации, не имеющем кода маркировки
+                    * `31` - о реализуемом подакцизном товаре, подлежащем маркировке средством идентификации, имеющем код маркировки
+                    * `32` - о реализуемом товаре, подлежащем маркировке средством идентификации, не имеющем кода маркировки, за исключением подакцизного товара
+                    * `33` - о реализуемом товаре, подлежащем маркировке средством идентификации, имеющем код маркировки, за исключением подакцизного товара
+                type: "integer"
+                enum:
+                  - 1
+                  - 2
+                  - 3
+                  - 4
+                  - 5
+                  - 6
+                  - 7
+                  - 9
+                  - 10
+                  - 11
+                  - 12
+                  - 13
+                  - 14
+                  - 15
+                  - 16
+                  - 17
+                  - 18
+                  - 19
+                  - 20
+                  - 21
+                  - 22
+                  - 23
+                  - 24
+                  - 25
+                  - 26
+                  - 27
+                  - 30
+                  - 31
+                  - 32
+                  - 33 
+              nds_value:
+                description: |
+                  Налоговая ставка НДС. (Тег 1199)
+                  Возможные значения:
+                  * `0` – НДС по ставке 0%;
+                  * `10` – НДС чека по ставке 10%;
+                  * `110` – НДС чека по расчетной ставке 10/110;
+                  * `20` – НДС чека по ставке 20%;
+                  * `120` – НДС чека по расчетной ставке 20/120.
+                type: "integer"
+                enum:
+                  - 0
+                  - 10
+                  - 20
+                  - 110
+                  - 120
+              nds_not_apply:
+                description: |
+                  для значения Без НДС (nds_not_apply: true),
+                  для оплат с НДС (nds_not_apply: false),
+                type: "boolean"
+                enum:
+                  - true
+                  - false
+              user_data:
+                description: "Дополнительный реквизит предмета расчета. (Тег 1191)"
+                type: "string"
+                format: "string"
+                maxLength: 64
+                example: "nngizxeipfzvsbuubtzghhosknuugijwxivttxapaoqlurdklmmkxtysvnsiawjk"
+              excise:
+                description: "Сумма акциза в рублях. (Тег 1229)"
+                type: "number"
+                format: "double"
+                maximum: 999999999.99
+                multipleOf: 0.01
+                example: 10
+              country_code:
+                description: "Цифровой код страны происхождения товара. (Тег 1230)"
+                type: "string"
+                format: "string3"
+                maxLength: 3
+                example: "123"
+              declaration_number:
+                description: "Номер таможенной декларации. (Тег 1231)"
+                type: "string"
+                maxLength: 32
+                example: "appywpyajxjggylxlomqjygvtxwjfbab"
+              mark_quantity:
+                description: "Дробное количество маркированного товара (Тег 1291)"
+                type: "object"
+                required: 
+                  - "numerator"
+                  - "denominator"
+                properties:
+                  numerator:
+                    description: "Числитель дробной части предмета расчета (Тег 1293)"
+                    type: "integer"
+                    format: "int64"
+                    example: 12
+                  denominator:
+                    description: "Знаменатель дробной части предмета расчета (Тег 1294)"
+                    type: "integer"
+                    format: "int64"
+                    example: 20
+              mark_processing_mode:
+                description: |
+                  Режим обработки кода маркировки (2102). 
+                  Должен принимать значение равное `0`"
+                type: "string"
+                enum:
+                - "0"
+              sectoral_item_props:
+                description: "Отраслевой реквизит предмета расчета (Тег 1260)"
+                type: "array"
+                items:
+                  type: "object"
+                  required:
+                    - "number"
+                    - "federal_id"
+                    - "value"
+                    - "date"
+                  properties:
+                    number:
+                      description: "Номер документа основания (Тег 1264)"
+                      type: "string"
+                      maxLength: 32
+                      example: "123456"
+                    federal_id:
+                      description: |
+                        Идентификатор ФОИВ. (Тег 1262)
+                        * `001` - Министерство внутренних дел Российской Федерации
+                        * `002` - Министерство Российской Федерации по делам гражданской оборон, чрезвычайным ситуациям и ликвидации последствий стихийных бедствий
+                        * `003` - Министерство иностранных дел Российской Федерации 
+                        * `004` - Федеральное агентство по делам Содружества Независимых Государств, соотечественников, проживающих за рубежом, и по международному гуманитарному сотрудничеству
+                        * `005` - Министерство обороны Российской Федерации
+                        * `006` - Федеральная служба по военно-техническому сотрудничеству
+                        * `007` - Федеральная служба по техническому и экспортному контролю
+                        * `008` - Министерство юстиции Российской Федерации
+                        * `009` - Федеральная служба исполнения наказаний
+                        * `010` - Федеральная служба судебных приставов
+                        * `011` - Государственная фельдъегерская служба Российской Федерации (федеральная служба)
+                        * `012` - Служба внешней разведки Российской Федерации (федеральная служба)
+                        * `013` - Федеральная служба безопасности Российской Федерации(федеральная служба)
+                        * `014` - Федеральная служба войск национальной гвардии РоссийскойФедерации (федеральная служба)
+                        * `015` - Федеральная служба охраны Российской Федерации (федеральная служба)
+                        * `016` - Федеральная служба по финансовому мониторингу (федеральная служба)
+                        * `017` - Федеральное архивное агентство (федеральное агентство)
+                        * `018` - Главное управление специальных программ Президента Российской Федерации (федеральное агентство)
+                        * `019` - Управление делами Президента Российской Федерации (федеральное агентство)
+                        * `020` - Министерство здравоохранения Российской Федерации
+                        * `021` - Федеральная служба по надзору в сфере здравоохранения 
+                        * `022` - Министерство культуры Российской Федерации
+                        * `023` - Министерство науки и высшего образования Российской Федерации
+                        * `024` - Министерство природных ресурсов и экологии Российской Федерации
+                        * `025` - Федеральная служба по гидрометеорологии и мониторингу окружающей среды
+                        * `026` - Федеральная служба по надзору в сфере природопользования
+                        * `027` - Федеральное агентство водных ресурсов
+                        * `028` - Федеральное агентство лесного хозяйства
+                        * `029` - Федеральное агентство по недропользованию
+                        * `030` - Министерство промышленности и торговли Российской Федерации
+                        * `031` - Федеральное агентство по техническому регулированию и метрологии
+                        * `032` - Министерство просвещения Российской Федерации
+                        * `033` - Министерство Российской Федерации по развитию Дальнего Востока и Арктики
+                        * `034` - Министерство сельского хозяйства Российской Федерации
+                        * `035` - Федеральная служба по ветеринарному и фитосанитарному надзору
+                        * `036` - Федеральное агентство по рыболовству
+                        * `037` - Министерство спорта Российской Федерации
+                        * `038` - Министерство строительства и жилищно-коммунального хозяйства Российской Федерации
+                        * `039` - Министерство транспорта Российской Федерации
+                        * `040` - Федеральная служба по надзору в сфере транспорта 
+                        * `041` - Федеральное агентство воздушного транспорта 
+                        * `042` - Федеральное дорожное агентство
+                        * `043` - Федеральное агентство железнодорожного транспорта
+                        * `044` - Федеральное агентство морского и речного транспорта 
+                        * `045` - Министерство труда и социальной защиты Российской Федерации
+                        * `046` - Федеральная служба по труду и занятости 
+                        * `047` - Министерство финансов Российской Федерации
+                        * `048` - Федеральная налоговая служба
+                        * `049` - Федеральная пробирная палата (федеральная служба)
+                        * `050` - Федеральная служба по регулированию алкогольного рынка
+                        * `051` - Федеральная таможенная служба 
+                        * `052` - Федеральное казначейство (федеральная служба)
+                        * `053` - Федеральное агентство по управлению государственным имуществом
+                        * `054` - Министерство цифрового развития, связи и массовых коммуникаций Российской Федерации
+                        * `055` - Федеральная служба по надзору в сфере связи, информационных технологий и массовых коммуникаций
+                        * `056` - Федеральное агентство по печати и массовым коммуникациям 
+                        * `057` - Федеральное агентство связи
+                        * `058` - Министерство экономического развития Российской Федерации
+                        * `059` - Федеральная служба по аккредитации
+                        * `060` - Федеральная служба государственной статистики
+                        * `061` - Федеральная служба по интеллектуальной собственности
+                        * `062` - Федеральное агентство по туризму
+                        * `063` - Министерство энергетики Российской Федерации
+                        * `064` - Федеральная антимонопольная служба
+                        * `065` - Федеральная служба государственной регистрации, кадастра и картографии
+                        * `066` - Федеральная служба по надзору в сфере защиты прав потребителей и благополучия человека
+                        * `067` - Федеральная служба по надзору в сфере образования и науки
+                        * `068` - Федеральная служба по экологическому, технологическому и атомному надзору
+                        * `069` - Федеральное агентство по государственным резервам
+                        * `070` - Федеральное медико-биологическое агентство
+                        * `071` - Федеральное агентство по делам молодежи
+                        * `072` - Федеральное агентство по делам национальностей
+                      type: "string"
+                      enum:
+                        - "001"
+                        - "002"
+                        - "003"
+                        - "004"
+                        - "005" 
+                        - "007"
+                        - "008"
+                        - "009"
+                        - "010"
+                        - "011"
+                        - "012"
+                        - "013"
+                        - "014"
+                        - "015"
+                        - "016"
+                        - "017"
+                        - "018"
+                        - "019"
+                        - "020"
+                        - "021"
+                        - "022"
+                        - "023"
+                        - "024"
+                        - "025"
+                        - "026"
+                        - "027"
+                        - "028"
+                        - "029"
+                        - "030"
+                        - "031"
+                        - "032"
+                        - "033" 
+                        - "034"
+                        - "035"
+                        - "036"
+                        - "037"
+                        - "038"
+                        - "039"
+                        - "040"
+                        - "041"
+                        - "042"
+                        - "043"
+                        - "044"
+                        - "045"
+                        - "046"
+                        - "047"
+                        - "048"
+                        - "049"
+                        - "050"
+                        - "051"
+                        - "052"
+                        - "053"
+                        - "054"
+                        - "055"
+                        - "056"
+                        - "057"
+                        - "058"
+                        - "059"
+                        - "060"
+                        - "061"
+                        - "062"
+                        - "063"
+                        - "064"
+                        - "065"
+                        - "066"
+                        - "067"
+                        - "068"
+                        - "069"
+                        - "070"
+                        - "071"
+                        - "072"
+                    value:
+                      description: "Значение отраслевого реквизита (Тег 1265)"
+                      type: "string"
+                      maxLength: 256
+                      example: "123456"
+                    date:
+                      description: "Дата документа основания (Тег 1263). Значение в формате в формате ёДД.ММ.ГГГГё"
+                      minLength: 10
+                      type: "string"
+                      format: "date"
+                      example: "11.02.2022"
+              mark_code:
+                type: "object"
+                description: "Код товара (Тег 1163)"
+                properties:
+                  unknown:
+                    description: "Код товара, формат которого не идентифицирован, как один из реквизитов."
+                    type: "string"
+                    maxLength: 32
+                  ean8:
+                    description: "Код товара в формате EAN-8 (Тег 1301)"
+                    type: "string"
+                    maxLength: 8
+                  ean13:
+                    description: "Код товара в формате EAN-13 (Тег 1302)"
+                    type: "string"
+                    maxLength: 13
+                  itf14:
+                    description: "Код товара в формате ITF-14 (Тег 1303)"
+                    type: "string"
+                    maxLength: 14
+                  gs1m:
+                    description: |
+                      Код товара в формате GS1, нанесенный на товар, подлежащий (не подлежащий) маркировке средствами идентификации. (Тег 1304)
+                      
+                      Примечание: Код товара необходимо передавать целиком. В связи с тем, что в коде товара могут быть непечатные символы, необходимо перед отправкой кодировать строку с кодом товара в Base64.
+                      
+                    type: "string"
+                    format: "base64"
+                    maxLength: 256
+                  short:
+                    description: "Код товара в формате короткого кода маркировки, нанесенный на товар, подлежащий маркировке средствами идентификации (Тег 1306)"
+                    type: "string"
+                    maxLength: 38
+                  fur:
+                    description: "Контрольно-идентификационный знак мехового изделия. Ровно 20 символов, должно соответствовать маске СС-ЦЦЦЦЦЦ-СССССССССС (Тег 1307)"
+                    type: "string"
+                    maxLength: 20
+                  egais20:
+                    description: "Код товара в формате ЕГАИС-2.0 (Тег 1308)"
+                    type: "string"
+                    maxLength: 33
+                  egais30:
+                    description: "Код товара в формате ЕГАИС-3.0 (Тег 1309)"
+                    type: "string"
+                    maxLength: 14
+                default: 
+                  gs1m: "MDEwNDYwNzQyODY3OTA5MDIxNmVKSWpvV0g1NERkVSA5MWZmZDAgOTJzejZrU1BpckFwZk1CZnR2TGJvRTFkbFdDLzU4aEV4UVVxdjdCQmtabWs0PQ=="
+              agent_info:
+                description: "Атрибуты агента."
+                type: "object"
+                required: 
+                  - "type"
+                  - "supplier_phone"
+                properties:
+                  type:
+                    description: |
+                      Признак агента по предмету расчёта. (Тег 1222)
+                      Возможные значенния:
+                      * `1` – банковский платежный агент. Оказание услуг
+                      покупателю (клиенту) пользователем, являющимся банковским платежным
+                      агентом.
+                      * `2` – банковский платежный субагент. Оказание
+                      услуг покупателю (клиенту) пользователем, являющимся банковским
+                      платежным субагентом.
+                      * `4` – платежный агент. Оказание услуг покупателю (клиенту)
+                      пользователем, являющимся платежным агентом.
+                      * `8` – платежный субагент. Оказание услуг покупателю
+                      (клиенту) пользователем, являющимся платежным субагентом.
+                      * `16` – поверенный. Осуществление расчета с покупателем
+                      (клиентом) пользователем, являющимся поверенным.
+                      * `32` – комиссионер. Осуществление расчета с
+                      покупателем (клиентом) пользователем, являющимся комиссионером.
+                      * `64` – другой тип агента. Осуществление расчета с покупателем
+                      (клиентом) пользователем, являющимся агентом и не являющимся
+                      банковским платежным агентом (субагентом), платежным агентом
+                      (субагентом), поверенным, комиссионером.
+                    type: "integer"
+                    enum:
+                      - 1
+                      - 2
+                      - 4
+                      - 8
+                      - 16
+                      - 32
+                      - 64
+                  transfer_operator_phone:
+                    type: "array"
+                    items:
+                      type: "string"
+                      description: "Номера телефонов оператора по переводу денежных средств (Тег 1075)"
+                      maxLength: 19
+                      example: "+71111111111"
+                  transfer_operator_name:
+                    description: "Наименование оператора перевода. (Тег 1026)"
+                    type: "string"
+                    maxLength: 64
+                    example: "Наименование оператора перевода."
+                  transfer_operator_address:
+                    description: "Адрес оператора перевода. (Тег 1005)"
+                    type: "string"
+                    maxLength: 256
+                    example: "Место нахождения оператора по переводу денежных средств"
+                  transfer_operator_inn:
+                    description: "ИНН оператора перевода (Тег 1016)"
+                    type: "string"
+                    minLength: 10
+                    maxLength: 12
+                    example: "5740673712"
+                  payment_operator_operation:
+                    description: "Наименование операции банковского платежного агента, банковского платежного субагента. (Тег 1044)"
+                    type: "string"
+                    maxLength: 24
+                    example: "Перевод д/с"
+                  payment_operator_phone:
+                    type: "array"
+                    items:
+                      type: "string"
+                      description: "Номера телефонов платежного агента, платежного субагента, банковского платежного агента, банковского платежного субагента (Тег 1073)"
+                      maxLength: 19
+                      example: "+71111111111"
+                  receive_operator_phone:
+                    type: "array"
+                    items:
+                      type: "string"
+                      description: "Номера контактных телефонов оператора по приему платежей (Тег 1074)"
+                      maxLength: 19
+                      example: "+71111111111"
+                  supplier_phone:
+                    type: "array"
+                    items:
+                      type: "string"
+                      description: "Телефоны поставщика. (Тег 1171)"
+                      maxLength: 19
+                      example: "+71111111111"
+                  supplier_name:
+                    description: "Наименование поставщика. (Тег 1225)"
+                    type: "string"
+                    maxLength: 256
+                    example: "Наименование поставщика."
+                  supplier_inn:
+                    description: "ИНН поставщика (Тег 1226)"
+                    type: "string"
+                    minLength: 10
+                    maxLength: 12
+                    example: "5740673712" 
+        author:
+          description: "ФИО кассира"
+          type: "string"
+          maxLength: 64
+          example: Кассир
+        tag1055:
+          description: |
+            Система налогообложения
+            * `1` - общая СН
+            * `2` – упрощенная СН (доходы);
+            * `4` – упрощенная СН (доходы минус расходы);
+            * `8` – единый налог на вмененный доход;
+            * `16` – единый сельскохозяйственный налог;
+            * `32` – патентная СН.
+          type: "integer"
+          enum: 
+            - 1
+            - 2
+            - 4
+            - 8
+            - 16
+            - 32
+          example: 1
+        client_name:
+          description: "Наименование покупателя (Тег 1227)"
+          type: "string"
+          maxLength: 256
+          example: "Иванов Иван Иванович"
+        client_inn:
+          description: "ИНН покупателя (Тег 1228)"
+          type: "string"
+          minLength: 10
+          maxLength: 12
+          example: "5740673712"
+        client_birthdate:
+          description: "Дата рождения покупателя (клиента) в формате ДД.ММ.ГГГГ (ровно 10 символов) (Тег 1243)"
+          minLength: 10
+          type: "string"
+          example: "30.12.1990"
+        client_citizenship:
+          description: "Числовой код страны, гражданином которой является покупатель (клиент). Код страны указывается в соответствии с Общероссийским классификатором стран мира ОКСМ. Ровно 3 цифры (Тег 1244)"
+          maxLength: 3
+          type: "string"
+          format: "string"
+          example: "123"
+        client_document_code:
+          description:  | 
+            Числовой код вида документа, удостоверяющего личность (Тег 1245). 
+            Может принимать только значения из справочника. Ровно 2 цифры
+              * `21` - Паспорт гражданина Российской Федерации
+              * `22` - Паспорт гражданина Российской Федерации, дипломатический паспорт, служебный паспорт, удостоверяющие личность гражданина Российской Федерации за пределами Российской Федерации
+              * `26` - Временное удостоверение личности гражданина Российской Федерации, выдаваемое на период оформления паспорта гражданина Российской Федерации
+              * `27` - Свидетельство о рождении гражданина Российской Федерации (для граждан Российской Федерации в возрасте до 14 лет)
+              * `28` - Иные документы, признаваемые документами, удостоверяющими личность гражданина Российской Федерации в соответствии с законодательством Российской Федерации Документы, удостоверяющие личность иностранных граждан или лиц без гражданства
+              * `31` - Паспорт иностранного гражданина
+              * `32` - Иные документы, признаваемые документами, удостоверяющими личность иностранного гражданина в соответствии с законодательством Российской Федерации и международным договором Российской Федерации
+              * `33` - Документ, выданный иностранным государством и признаваемый в соответствии с международным договором Российской Федерации в качестве документа, удостоверяющего личность лица без гражданства.
+              * `34` - Вид на жительство (для лиц без гражданства)
+              * `35` - Разрешение на временное проживание (для лиц без гражданства)
+              * `36` - Свидетельство о рассмотрении ходатайства о признании лица без гражданства беженцем на территории Российской Федерации по существу
+              * `37` - Удостоверение беженца
+              * `38` - Иные документы, признаваемые документами, удостоверяющими личность лиц без гражданства в соответствии с законодательством Российской Федерации и международным договором Российской Федерации
+              * `40` - Документ, удостоверяющий личность лица, не имеющего действительного документа, удостоверяющего личность, на период рассмотрения заявления о признании гражданином Российской Федерации или о приеме в гражданство Российской Федерации
+          minLength: 2
+          type: "string"
+          enum: 
+            - "21"
+            - "22"
+            - "26"
+            - "27"
+            - "28"
+            - "31"
+            - "32"
+            - "33"
+            - "34"
+            - "35"
+            - "36"
+            - "37"
+            - "38"
+            - "40"
+          example: "21"
+        client_document_data:
+          description: "Реквизиты документа, удостоверяющего личность (Тег 1246)"
+          type: "string"
+          maxLength: 64
+          example: "4507 443564"
+        client_address:
+          description: "Адрес покупателя (клиента), грузополучателя (Тег 1254)"
+          type: "string"
+          maxLength: 256
+          example: "г. Уфа, ул. Пушкина, д. 1"
+        smsEmail54FZ:
+          description: "Электронный адрес покупателя или телефон покупателя (Тег 1008)"
+          type: "string"
+          maxLength: 64
+          example: "test@test.ru"
+        payed_cash:
+          description: "Сумма оплаты наличными"
+          type: "number"
+          format: "double"
+          multipleOf: 0.01
+          example: 0
+        payed_cashless:
+          description: "Сумма оплаты безналичными"
+          type: "number"
+          format: "double"
+          multipleOf: 0.01
+          example: 10
+        payed_credit:
+          description: "Сумма оплаты последующей оплаты кредитом"
+          type: "number"
+          format: "double"
+          multipleOf: 0.01
+          example: 0
+        payed_consideration:
+          description: "Сумма по чеку встречным предоставлением"
+          type: "number"
+          format: "double"
+          multipleOf: 0.01
+          example: 0
+        payed_prepay:
+          description: "Сумма оплаты предоплатой(аванс)"
+          type: "number"
+          format: "double"
+          multipleOf: 0.01
+          example: 0
+        additional_user_props:
+          description: "Дополнительный реквизит пользователя (Тег 1084)"
+          type: "object"
+          required:
+            - "name"
+            - "value"
+          properties:
+            name:
+              description: "Наименование дополнительного реквизита пользователя (Тег 1085)"
+              type: "string"
+              maxLength: 64
+              example: "mdlp3108805"
+            value:
+              description: "Значение дополнительного реквизита пользователя. (Тег 1086)"
+              type: "string"
+              maxLength: 256
+              example: "ps45102&dnАБV492&&781&dd181110&sid71752852194630&"
+        cashier_inn:
+          description: "ИНН кассира (Тег 1203)"
+          type: "string"
+          minLength: 12
+          example: "887405485310"
+        callback_url:
+          type: "string"
+          maxLength: 256
+          example: "https://385aebd79436e9f44f1e135ebd64b39c.m.pipedream.net"
+        operating_check_props:
+          description: "Операционный реквизит чека (Тег 1270)"
+          type: "object"
+          required:
+            - "name"
+            - "value"
+            - "timestamp"
+          properties:
+            name:
+              description: "Идентификатор операции (Тег 1271)"
+              type: "string"
+              enum: 
+              - "0"
+              example: "0"
+            value:
+              description: "Данные операции (Тег 1272)"
+              type: "string"
+              maxLength: 64
+              example: "ps45102&dnАБV492&&781&dd181110&sid71752852194630&"
+            timestamp:
+              description: "Дата и время операции в формате: «dd.mm.yyyy HH:MM:SS» (Тег 1273)"
+              type: "string"
+              format: "date-time"
+              maxLength: 64
+              example: "14.02.2022 04:51:04"
+        sectoral_check_props:
+          description: "Отраслевой реквизит чека (Тег 1261)"
+          type: "array"
+          items:
+            type: "object"
+            required:
+              - "number"
+              - "federal_id"
+              - "value"
+              - "date"
+            properties:
+              number:
+                description: "Номер нормативного акта федерального органа исполнительной власти, регламентирующего порядок заполнения реквизита `значение отраслевого реквизита` (Тег 1264)"
+                type: "string"
+                maxLength: 32
+                example: "123456"
+              federal_id:
+                description: |
+                  Идентификатор ФОИВ (Тег 1262).
+                  * `001` - Министерство внутренних дел Российской Федерации
+                  * `002` - Министерство Российской Федерации по делам гражданской оборон, чрезвычайным ситуациям и ликвидации последствий стихийных бедствий
+                  * `003` - Министерство иностранных дел Российской Федерации 
+                  * `004` - Федеральное агентство по делам Содружества Независимых Государств, соотечественников, проживающих за рубежом, и по международному гуманитарному сотрудничеству
+                  * `005` - Министерство обороны Российской Федерации
+                  * `006` - Федеральная служба по военно-техническому сотрудничеству
+                  * `007` - Федеральная служба по техническому и экспортному контролю
+                  * `008` - Министерство юстиции Российской Федерации
+                  * `009` - Федеральная служба исполнения наказаний
+                  * `010` - Федеральная служба судебных приставов
+                  * `011` - Государственная фельдъегерская служба Российской Федерации (федеральная служба)
+                  * `012` - Служба внешней разведки Российской Федерации (федеральная служба)
+                  * `013` - Федеральная служба безопасности Российской Федерации(федеральная служба)
+                  * `014` - Федеральная служба войск национальной гвардии РоссийскойФедерации (федеральная служба)
+                  * `015` - Федеральная служба охраны Российской Федерации (федеральная служба)
+                  * `016` - Федеральная служба по финансовому мониторингу (федеральная служба)
+                  * `017` - Федеральное архивное агентство (федеральное агентство)
+                  * `018` - Главное управление специальных программ Президента Российской Федерации (федеральное агентство)
+                  * `019` - Управление делами Президента Российской Федерации (федеральное агентство)
+                  * `020` - Министерство здравоохранения Российской Федерации
+                  * `021` - Федеральная служба по надзору в сфере здравоохранения 
+                  * `022` - Министерство культуры Российской Федерации
+                  * `023` - Министерство науки и высшего образования Российской Федерации
+                  * `024` - Министерство природных ресурсов и экологии Российской Федерации
+                  * `025` - Федеральная служба по гидрометеорологии и мониторингу окружающей среды
+                  * `026` - Федеральная служба по надзору в сфере природопользования
+                  * `027` - Федеральное агентство водных ресурсов
+                  * `028` - Федеральное агентство лесного хозяйства
+                  * `029` - Федеральное агентство по недропользованию
+                  * `030` - Министерство промышленности и торговли Российской Федерации
+                  * `031` - Федеральное агентство по техническому регулированию и метрологии
+                  * `032` - Министерство просвещения Российской Федерации
+                  * `033` - Министерство Российской Федерации по развитию Дальнего Востока и Арктики
+                  * `034` - Министерство сельского хозяйства Российской Федерации
+                  * `035` - Федеральная служба по ветеринарному и фитосанитарному надзору
+                  * `036` - Федеральное агентство по рыболовству
+                  * `037` - Министерство спорта Российской Федерации
+                  * `038` - Министерство строительства и жилищно-коммунального хозяйства Российской Федерации
+                  * `039` - Министерство транспорта Российской Федерации
+                  * `040` - Федеральная служба по надзору в сфере транспорта 
+                  * `041` - Федеральное агентство воздушного транспорта 
+                  * `042` - Федеральное дорожное агентство
+                  * `043` - Федеральное агентство железнодорожного транспорта
+                  * `044` - Федеральное агентство морского и речного транспорта 
+                  * `045` - Министерство труда и социальной защиты Российской Федерации
+                  * `046` - Федеральная служба по труду и занятости 
+                  * `047` - Министерство финансов Российской Федерации
+                  * `048` - Федеральная налоговая служба
+                  * `049` - Федеральная пробирная палата (федеральная служба)
+                  * `050` - Федеральная служба по регулированию алкогольного рынка
+                  * `051` - Федеральная таможенная служба 
+                  * `052` - Федеральное казначейство (федеральная служба)
+                  * `053` - Федеральное агентство по управлению государственным имуществом
+                  * `054` - Министерство цифрового развития, связи и массовых коммуникаций Российской Федерации
+                  * `055` - Федеральная служба по надзору в сфере связи, информационных технологий и массовых коммуникаций
+                  * `056` - Федеральное агентство по печати и массовым коммуникациям 
+                  * `057` - Федеральное агентство связи
+                  * `058` - Министерство экономического развития Российской Федерации
+                  * `059` - Федеральная служба по аккредитации
+                  * `060` - Федеральная служба государственной статистики
+                  * `061` - Федеральная служба по интеллектуальной собственности
+                  * `062` - Федеральное агентство по туризму
+                  * `063` - Министерство энергетики Российской Федерации
+                  * `064` - Федеральная антимонопольная служба
+                  * `065` - Федеральная служба государственной регистрации, кадастра и картографии
+                  * `066` - Федеральная служба по надзору в сфере защиты прав потребителей и благополучия человека
+                  * `067` - Федеральная служба по надзору в сфере образования и науки
+                  * `068` - Федеральная служба по экологическому, технологическому и атомному надзору
+                  * `069` - Федеральное агентство по государственным резервам
+                  * `070` - Федеральное медико-биологическое агентство
+                  * `071` - Федеральное агентство по делам молодежи
+                  * `072` - Федеральное агентство по делам национальностей
+                type: "string"
+                enum:
+                  - "001"
+                  - "002"
+                  - "003"
+                  - "004"
+                  - "005" 
+                  - "007"
+                  - "008"
+                  - "009"
+                  - "010"
+                  - "011"
+                  - "012"
+                  - "013"
+                  - "014"
+                  - "015"
+                  - "016"
+                  - "017"
+                  - "018"
+                  - "019"
+                  - "020"
+                  - "021"
+                  - "022"
+                  - "023"
+                  - "024"
+                  - "025"
+                  - "026"
+                  - "027"
+                  - "028"
+                  - "029"
+                  - "030"
+                  - "031"
+                  - "032"
+                  - "033" 
+                  - "034"
+                  - "035"
+                  - "036"
+                  - "037"
+                  - "038"
+                  - "039"
+                  - "040"
+                  - "041"
+                  - "042"
+                  - "043"
+                  - "044"
+                  - "045"
+                  - "046"
+                  - "047"
+                  - "048"
+                  - "049"
+                  - "050"
+                  - "051"
+                  - "052"
+                  - "053"
+                  - "054"
+                  - "055"
+                  - "056"
+                  - "057"
+                  - "058"
+                  - "059"
+                  - "060"
+                  - "061"
+                  - "062"
+                  - "063"
+                  - "064"
+                  - "065"
+                  - "066"
+                  - "067"
+                  - "068"
+                  - "069"
+                  - "070"
+                  - "071"
+                  - "072"
+              value:
+                description: "Состав значений, определенных нормативного актом федерального органа исполнительной власти (Тег 1265)"
+                type: "string"
+                maxLength: 256
+                example: "123456"
+              date:
+                description: "Дата нормативного акта федерального органа исполнительной власти, регламентирующего порядок заполнения реквизита `значение отраслевого реквизита` (Тег 1263)"
+                minLength: 10
+                type: "string"
+                format: "date"
+                example: "11.02.2022"
+        additional_check_props:
+          description: "Дополнительный реквизит чека (Тег 1192)"
+          type: "string"
+          maxLength: 16
+          example: "445334544"
+    Shifts:
+      type: "object"
+      properties:
+        id:
+          description: "ID смены"
+          type: "integer"
+          format: "int64"
+          example: "446248135"
+        cashbox_id:
+          description: "ID кассы"
+          type: "integer"
+          format: "int32"
+          example: '110'
+        num:
+          description: "Номер смены"
+          type: "integer"
+          format: "int32"
+          example: '273'
+        date_start:
+          description: "Дата открытия"
+          type: "string"
+          format: "date-time"
+          example: "2023-11-08T09:50:04+03:00"
+        date_stop:
+          description: "Дата закрытия"
+          type: "string"
+          format: "date-time"
+          example: "2023-11-09T09:50:04+03:00"
+          default: "null"
+        is_open:
+          description: "Статус открыта / закрыта"
+          type: "boolean"
+          format: "boolean"
+          example: "true"
+        author:
+          description: "Кассир"
+          type: "string"
+          format: "string"
+          example: "Иванов И.И."
+        checks_count:
+          description: "Количество чеков в смене"
+          type: "integer"
+          format: "integer"
+          example: "1166"
+        income_checks_count:
+          description: "Количество чеков прихода"
+          type: "integer"
+          format: "integer"
+          example: "583"
+        income_checks_sum:
+          description: "Сумма чеков прихода"
+          type: "number"
+          format: "double"
+          example: "10019741.64"
+        refund_checks_count:
+          description: "Количество чеков возврата"
+          type: "integer"
+          format: "integer"
+          example: "583"
+        refund_checks_sum:
+          description: "Сумма чеков возврата"
+          type: "number"
+          format: "double"
+          example: "10019741.64"
+        fn_number:
+          description: "Номер ФН"
+          type: "string"
+          format: "string"
+          example: '9999086204001836'
+        date_create:
+          description: "Дата создания"
+          type: "string"
+          format: "date-time"
+          example: "2023-11-08T09:50:04+03:00"
+        date_update:
+          description: "Дата обновления"
+          type: "string"
+          format: "date-time"
+          example: "2023-11-09T10:00:01+03:00"
+    Checks:
+      type: "object"
+      required:
+      - "id"
+      properties:
+        id:
+          description: "ID команды"
+          type: "integer"
+          format: "int64"
+          example: "446248135"
+        shift_ref:
+          description: "ID смены"
+          type: "integer"
+          format: "int64"
+          example: "32408"
+        user_ref:
+          description: "ID пользователя"
+          type: "integer"
+          format: "int64"
+          example: "589"
+        c_num:
+          description: "Уникальный номер документа из системы"
+          type: "string"
+          maxLength: 128
+          example: "1603108283590"
+        author:
+          description: "ФИО кассира"
+          type: "string"
+          maxLength: 64
+          example: "Кассир"
+        date_create:
+          description: "Дата создания команды"
+          type: "string"
+          format: "date-time"
+          example: "31.12.2019T23:59:59+03"
+        date_update:
+          description: "Дата обновления команды"
+          type: "string"
+          format: "date-time"
+          example: "31.12.2019T23:59:59+03"
+        check_type_id: 
+          description: |
+            Тип команды. Возможные значения:
+            * `1` - Приход
+            * `2` - Возврат
+            * `3` - Внесение
+            * `4` - Изъятие
+            * `7` - Чек коррекции прихода
+            * `8` - Закрытие смены
+            * `9` - Открытие смены
+            * `10` - Z- отчет
+            * `11` - Чек коррекции возврата прихода
+            * `12` - Чек коррекции расхода
+            * `13` - Чек коррекции возврата расхода
+          type: "integer"
+          enum:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 7
+            - 8
+            - 9
+            - 10
+            - 11
+            - 12
+            - 13
+        fn_number:
+          description: "Номер ФН"
+          type: "string"
+          format: "string"
+          example: "9999048702007031"
+          default: "null"
+        ecr_registration_number:
+          description: "Регистрационный номер ККТ"
+          type: "string"
+          format: "string"
+          example: "0000000000023011"
+          default: "null"
+        fiscal_document_number:
+          description: "Фискальный номер документ"
+          type: "string"
+          format: "string"
+          example: "1887"
+          default: ""
+        fiscal_receipt_number:
+          description: "Порядковый номер чека в смене"
+          type: "integer"
+          format: "int32"
+          example: "1887"
+          default: "null"
+        fiscal_document_attribute:
+          description: "Фискальный признак документа"
+          type: "integer"
+          format: "int64"
+          example: "933492249"
+        result_shift_number:
+          description: "Номер смены, в которой прошел чек."
+          type: "integer"
+          format: "int32"
+          example: "126"
+          default: "null"
+        external_id:
+          description: "Внешний идентификатор команды."
+          type: "string"
+          format: "string"
+          example: "1603108283590"
+          default: "null"
+        receipt_datetime:
+          description: "Дата и время документа из ФН"
+          type: "string"
+          format: "date-time"
+          example: "2020-10-30T13:42:48+00:00"
+          default: "null"
+        result_msg:
+          description: "Сообщение о результате"
+          type: "string"
+          format: "string"
+          example: "ok"
+          default: "null"
+        payment_mode_check:
+          description: |
+            Признак способа расчёта. Возможные значения:
+            * `full_prepayment` – предоплата 100%. Полная предварительная оплата до момента передачи предмета расчета.
+            * `prepayment` – предоплата. Частичная предварительная оплата до момента передачи предмета расчета.
+            * `advance` – аванс.
+            * `full_payment` – полный расчет. Полная оплата, в том числе с учетом аванса (предварительной оплаты) в момент передачи предмета расчета
+            * `partial_payment` – частичный расчет и кредит. Частичная оплата предмета расчета в момент его передачи с последующей оплатой в кредит
+            * `credit` – передача в кредит. Передача предмета расчета без его оплаты в момент его передачи с последующей оплатой в кредит
+            * `credit_payment` – оплата кредита. Оплата предмета расчета после его передачи с оплатой в кредит (оплата кредита)
+          type: "string"
+          enum: 
+            - "full_prepayment"
+            - "prepayment"
+            - "advance"
+            - "full_payment"
+            - "partial_payment"
+            - "credit"
+            - "credit_payment"
+          example: "full_prepayment"
+        client_name:
+          description: "Наименование покупателя"
+          type: "string"
+          maxLength: 256
+          example: "Иванов Иван Иванович"
+        client_inn:
+          description: "ИНН покупателя"
+          type: "string"
+          minLength: 10
+          maxLength: 12
+          example: "5740673712"
+        client_birthdate:
+          description: "Дата рождения покупателя (клиента) в формате ДД.ММ.ГГГГ (ровно 10 символов)"
+          minLength: 10
+          type: "string"
+          example: "1990.12.30"
+        client_citizenship:
+          description: "Числовой код страны, гражданином которой является покупатель (клиент)"
+          maxLength: 3
+          type: "string"
+          format: "string"
+          example: "123"
+        client_document_code:
+          description:  | 
+            Числовой код вида документа, удостоверяющего личность
+          minLength: 2
+          type: "string"
+          example: "21"
+        client_document_data:
+          description: "Реквизиты документа, удостоверяющего личность"
+          type: "string"
+          maxLength: 64
+          example: "4507 443564"
+        client_address:
+          description: "Адрес покупателя (клиента), грузополучателя"
+          type: "string"
+          maxLength: 256
+          example: "г. Уфа, ул. Пушкина, д. 1"
+        operating_cp_name:
+          description: "Идентификатор операции"
+          type: "string"
+          example: "0"
+        operating_cp_value:
+          description: "Данные операции"
+          type: "string"
+          maxLength: 64
+          example: "ps45102&dnАБV492&&781&dd181110&sid71752852194630&"
+        operating_cp_timestamp:
+          description: "Дата и время операции"
+          type: "string"
+          format: "date-time"
+          maxLength: 64
+          example: "14.02.2022 04:51:04"
+        sectoral_cp_number:
+          description: "Номер нормативного акта федерального органа исполнительной власти, регламентирующего порядок заполнения реквизита `значение отраслевого реквизита`"
+          type: "string"
+          maxLength: 32
+          example: "123456"
+        sectoral_cp_federal_id:
+          description: "Идентификатор ФОИВ"
+          type: "string"
+          example: "001"
+        sectoral_cp_value:
+          description: "Состав значений, определенных нормативного актом федерального органа исполнительной власти"
+          type: "string"
+          maxLength: 256
+          example: "123456"
+        sectoral_cp_date:
+          description: "Дата нормативного акта федерального органа исполнительной власти, регламентирующего порядок заполнения реквизита `значение отраслевого реквизита`"
+          minLength: 10
+          type: "string"
+          format: "date"
+          example: "2022-02-11"
+        additional_cp:
+          description: "Дополнительный реквизит чека"
+          type: "string"
+          maxLength: 16
+          example: "445334544"
+        additional_up_name:
+          description: "Наименование дополнительного реквизита пользователя"
+          type: "string"
+          maxLength: 64
+          example: "mdlp3108805"
+        additional_up_value:
+          description: "Значение дополнительного реквизита пользователя"
+          type: "string"
+          maxLength: 256
+          example: "ps45102&dnАБV492&&781&dd181110&sid71752852194630&"
+        cashbox_integration_ref:
+          description: "ID кассы"
+          type: "integer"
+          format: "int32"
+          example: "11"
+        remote_service_integrations_ref:
+          description: "ID интеграции"
+          type: "integer"
+          format: "int32"
+          example: "2161"
+        cashier_inn:
+          description: "ИНН кассира"
+          type: "string"
+          minLength: 12
+          example: "887405485310"
+        status:
+          description: "Статус команды (коды) - 0 - команда принята онлайн сервисом - 1 - команда передана в приложение - 2 - команда передана в ФР - 3 - команда выполнена"
+          type: "integer"
+          format: "int32"
+          example: "3"
+          default: "0"
+        result:
+          description: "Результат выполнения команды (коды) - 0 - команда в очереди - 1 - команда выпоолнена успешно - 2 - команда выполнена с ошибками"
+          type: "integer"
+          format: "int32"
+          example: "1"
+          default: "0"
+        total:
+          description: "Итоговая сумма документа в рублях с заданным в CMS округлением: - целая часть не более 8 знаков; - дробная часть не более 2 знаков. При регистрации в ККТ происходит расчёт фактической суммы: суммирование значений sum позиций. Допустимо значение total в диапазоне от целой части фактической суммы до точного значения фактической суммы"
+          type: "integer"
+          format: "integer"
+          example: "1000"
+          default: "0"
+        command_type_id:
+          description: |
+            Тип команды. Возможные значения:
+            * `1` - Приход
+            * `2` - Возврат
+            * `3` - Внесение
+            * `4` - Изъятие
+            * `7` - Чек коррекции прихода
+            * `8` - Закрытие смены
+            * `9` - Открытие смены
+            * `10` - Z- отчет
+            * `11` - Чек коррекции возврата прихода
+            * `12` - Чек коррекции расхода
+            * `13` - Чек коррекции возврата расхода
+          type: "integer"
+          enum:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 7
+            - 8
+            - 9
+            - 10
+            - 11
+            - 12
+            - 13
+        date_result:
+          description: "Дата получения результата выполнения команды"
+          type: "string"
+          format: "date-time"
+          example: "2020-10-30T13:42:48+00:00"
+        callback_url:
+          description: "Адрес отправки колбека команды"
+          type: "string"
+          maxLength: 256
+          example: "https://385aebd79436e9f44f1e135ebd64b39c.m.pipedream.net"
+        full_payment_command:
+          description: "Есть ли на эту комманду чек полного расчета."
+          type: "integer"
+          format: "int32"
+          example: "10634096"
+          default: "null"
+        refund_command:
+          description: "ID команды возврата чека."
+          type: "integer"
+          format: "int32"
+          example: "10634099"
+          default: "null"
+        type:
+          description: "Тип команды."
+          type: "string"
+          format: "string"
+          enum:
+            - printCheck 
+            - printPurchaseReturn
+            - printCheckBuy
+            - printCheckBuyReturn
+            - printCashIn
+            - printCashOut
+            - printReport
+            - printCheckCorrection
+            - closeShift
+            - openShift
+            - printCheckCorrectionReturn
+            - printBuyCorrection
+            - printBuyReturnCorrection
+          default: "printCheck"
+        receipt_url:
+          description: "Ссылка на элекктронный чек"
+          type: "string"
+          example: "https://electronic-receipt.class365.ru/?fd=8576&fpd=2684747465&kkt=0000000000014891"
+          default: "null"
+        command:
+          oneOf:
+            - $ref: '#/components/schemas/JSON_check'
+            - $ref: '#/components/schemas/JSON_shift'
+            - $ref: '#/components/schemas/JSON_cash'
+            - $ref: '#/components/schemas/JSON_report'
+            - $ref: '#/components/schemas/JSON_correction'
